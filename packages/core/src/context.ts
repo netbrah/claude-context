@@ -27,6 +27,7 @@ const DEFAULT_SUPPORTED_EXTENSIONS = [
     // Programming languages
     '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cpp', '.c', '.h', '.hpp',
     '.cs', '.go', '.rs', '.php', '.rb', '.swift', '.kt', '.scala', '.m', '.mm',
+    '.cc', '.ut',
     // Text and markup files
     '.md', '.markdown', '.ipynb',
     // '.txt',  '.json', '.yaml', '.yml', '.xml', '.html', '.htm',
@@ -132,7 +133,7 @@ export class Context {
         // Remove duplicates
         this.supportedExtensions = [...new Set(allSupportedExtensions)];
 
-        // Load custom ignore patterns from environment variables  
+        // Load custom ignore patterns from environment variables
         const envCustomIgnorePatterns = this.getCustomIgnorePatternsFromEnv();
 
         // Start with default ignore patterns
@@ -890,8 +891,10 @@ export class Context {
             '.py': 'python',
             '.java': 'java',
             '.cpp': 'cpp',
+            '.cc': 'cpp',
+            '.ut': 'cpp',
             '.c': 'c',
-            '.h': 'c',
+            '.h': 'cpp',
             '.hpp': 'cpp',
             '.cs': 'csharp',
             '.go': 'go',
@@ -1135,7 +1138,7 @@ export class Context {
     }
 
     /**
-     * Get custom ignore patterns from environment variables  
+     * Get custom ignore patterns from environment variables
      * Supports CUSTOM_IGNORE_PATTERNS as comma-separated list
      * @returns Array of custom ignore patterns
      */

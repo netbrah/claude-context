@@ -34,7 +34,7 @@ python test_endtoend.py
 
 This will:
 1. Create embeddings using OpenAI
-2. Connect to Milvus vector database  
+2. Connect to Milvus vector database
 3. Index the `packages/core/src` codebase
 4. Perform a semantic search
 5. Show results
@@ -61,8 +61,8 @@ print(result)
 ## How It Works
 
 1. `ts_executor.py` creates temporary TypeScript wrapper files
-2. Runs them with `ts-node` 
+2. Runs them with `ts-node`
 3. Captures JSON output and returns to Python
 4. Supports async functions and complex parameters
 
-That's it! This is just a simple bridge for testing purposes. 
+That's it! This is just a simple bridge for testing purposes.
