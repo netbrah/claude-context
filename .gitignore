@@ -1,7 +1,13 @@
+# File history
+.history
+.lh
+
 # Dependencies
 node_modules/
 *.pnp
 .pnp.js
+
+# Dev Builds
 
 # Production builds
 dist/
