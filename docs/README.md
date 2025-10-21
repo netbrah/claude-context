@@ -19,6 +19,7 @@ Welcome to the Claude Context documentation! Claude Context is a powerful tool t
 ### Dive Deep
 - [File Inclusion & Exclusion Rules](dive-deep/file-inclusion-rules.md) - Detailed explanation of file inclusion and exclusion rules
 - [Asynchronous Indexing Workflow](dive-deep/asynchronous-indexing-workflow.md) - Detailed explanation of asynchronous indexing workflow
+- [AST Splitter Improvements for C/C++](dive-deep/ast-splitter-improvements.md) - Enhanced C/C++ support for large codebases (38% improvement)
 
 ### Troubleshooting
 - [❓ FAQ](troubleshooting/faq.md) - Frequently asked questions
