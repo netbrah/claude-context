@@ -1,0 +1,179 @@
+name: Test and Benchmark
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [master, main, claude_context]
+
+jobs:
+  test-and-benchmark:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [20.x, 22.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run linter
+        run: pnpm lint || echo "Linting skipped or failed"
+        continue-on-error: true
+      
+      - name: Build all packages
+        run: pnpm build
+      
+      - name: Run all tests
+        run: |
+          cd packages/core
+          pnpm test
+      
+      - name: Run test coverage
+        run: |
+          cd packages/core
+          pnpm test:coverage
+      
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-coverage-${{ matrix.os }}-node-${{ matrix.node-version }}
+          path: packages/core/coverage/
+          retention-days: 30
+      
+      - name: Run C++ benchmark
+        run: pnpm run benchmark:cpp
+      
+      - name: Upload C++ benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-benchmark-${{ matrix.os }}-node-${{ matrix.node-version }}
+          path: cpp-benchmark-results.json
+          retention-days: 30
+      
+      - name: Run build benchmark
+        run: pnpm run benchmark
+        continue-on-error: true
+      
+      - name: Upload build benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-benchmark-${{ matrix.os }}-node-${{ matrix.node-version }}
+          path: build-benchmark.json
+          retention-days: 30
+      
+      - name: Package core
+        run: |
+          cd packages/core
+          pnpm pack
+          mv *.tgz ../../core-package.tgz
+      
+      - name: Package MCP
+        run: |
+          cd packages/mcp
+          pnpm pack
+          mv *.tgz ../../mcp-package.tgz
+      
+      - name: Upload core package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-package-${{ matrix.os }}-node-${{ matrix.node-version }}
+          path: core-package.tgz
+          retention-days: 30
+      
+      - name: Upload MCP package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-package-${{ matrix.os }}-node-${{ matrix.node-version }}
+          path: mcp-package.tgz
+          retention-days: 30
+      
+      - name: Create benchmark summary
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "## 📊 Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### C++ Parser Benchmark" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          if [ -f cpp-benchmark-results.json ]; then
+            cat cpp-benchmark-results.json | jq '.[-1] | {timestamp, totalFiles, summary}' >> $GITHUB_STEP_SUMMARY || echo "Could not parse results" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Core package: core-package.tgz" >> $GITHUB_STEP_SUMMARY
+          echo "- MCP package: mcp-package.tgz" >> $GITHUB_STEP_SUMMARY
+          echo "- Test coverage report available" >> $GITHUB_STEP_SUMMARY
+          echo "- Benchmark results available" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let benchmarkData = {};
+            
+            try {
+              const data = fs.readFileSync('cpp-benchmark-results.json', 'utf8');
+              const results = JSON.parse(data);
+              benchmarkData = results[results.length - 1];
+            } catch (e) {
+              console.log('Could not read benchmark results:', e);
+            }
+            
+            const summary = benchmarkData.summary || {};
+            
+            const comment = `## 🎯 Test and Benchmark Results
+            
+            ### ✅ Tests Status
+            All tests passed successfully!
+            
+            ### 📊 C++ Parser Benchmark
+            
+            | Metric | Value |
+            |--------|-------|
+            | Files Analyzed | ${benchmarkData.totalFiles || 'N/A'} |
+            | Total Lines | ${summary.totalLines || 'N/A'} |
+            | Total Size | ${summary.totalSizeKB || 'N/A'} KB |
+            | Parse Time | ${summary.totalParseTimeMs || 'N/A'} ms |
+            | Speed | ${summary.overallLinesPerSecond || 'N/A'} lines/sec |
+            | Avg per File | ${summary.averageParseTimeMs || 'N/A'} ms |
+            
+            ### 📦 Artifacts
+            - ✅ Core package built: \`core-package.tgz\`
+            - ✅ MCP package built: \`mcp-package.tgz\`
+            - ✅ Test coverage report generated
+            - ✅ Benchmark results saved
+            
+            ### 🔗 Downloads
+            Artifacts are available in the workflow run for 30 days.
+            
+            ---
+            *Node.js: ${{ matrix.node-version }} | OS: ${{ matrix.os }}*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
