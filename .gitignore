@@ -18,6 +18,12 @@ build/
 coverage/
 *.lcov
 
+# Benchmark results
+cpp-benchmark-results.json
+
+# Packaged archives (except pre-built ones in root)
+packages/**/*.tgz
+
 # Environment variables
 .env
 .env.local
