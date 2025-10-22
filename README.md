@@ -529,7 +529,7 @@ For detailed evaluation methodology and results, see the [evaluation directory](
 - 🔍 **Hybrid Code Search**: Ask questions like *"find functions that handle user authentication"* and get relevant, context-rich code instantly using advanced hybrid search (BM25 + dense vector).
 - 🧠 **Context-Aware**: Discover large codebase, understand how different parts of your codebase relate, even across millions of lines of code.
 - ⚡ **Incremental Indexing**: Efficiently re-index only changed files using Merkle trees.
-- 🧩 **Intelligent Code Chunking**: Analyze code in Abstract Syntax Trees (AST) for chunking.
+- 🧩 **Intelligent Code Chunking**: Analyze code in Abstract Syntax Trees (AST) for chunking. [Enhanced C/C++ support](docs/dive-deep/ast-splitter-improvements.md) provides 38% better semantic chunking for large codebases.
 - 🗄️ **Scalable**: Integrates with Zilliz Cloud for scalable vector search, no matter how large your codebase is.
 - 🛠️ **Customizable**: Configure file extensions, ignore patterns, and embedding models.
 

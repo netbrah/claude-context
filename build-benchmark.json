@@ -35,5 +35,84 @@
         "description": "Build Chrome extension"
       }
     ]
+  },
+  {
+    "timestamp": "2025-10-22T01:16:29.877Z",
+    "platform": "linux",
+    "nodeVersion": "v20.19.5",
+    "results": [
+      {
+        "success": false,
+        "duration": 836,
+        "command": "pnpm clean",
+        "description": "Clean all packages",
+        "error": "Command failed: pnpm clean"
+      },
+      {
+        "success": false,
+        "duration": 1231,
+        "command": "pnpm build:core",
+        "description": "Build core package",
+        "error": "Command failed: pnpm build:core"
+      },
+      {
+        "success": false,
+        "duration": 1233,
+        "command": "pnpm build:mcp",
+        "description": "Build MCP package",
+        "error": "Command failed: pnpm build:mcp"
+      },
+      {
+        "success": false,
+        "duration": 1243,
+        "command": "pnpm build:vscode",
+        "description": "Build VSCode extension",
+        "error": "Command failed: pnpm build:vscode"
+      },
+      {
+        "success": false,
+        "duration": 1719,
+        "command": "pnpm -r --filter=\"./packages/chrome-extension\" build",
+        "description": "Build Chrome extension",
+        "error": "Command failed: pnpm -r --filter=\"./packages/chrome-extension\" build"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-10-22T01:18:10.830Z",
+    "platform": "linux",
+    "nodeVersion": "v20.19.5",
+    "results": [
+      {
+        "success": true,
+        "duration": 1023,
+        "command": "pnpm clean",
+        "description": "Clean all packages"
+      },
+      {
+        "success": true,
+        "duration": 3692,
+        "command": "pnpm build:core",
+        "description": "Build core package"
+      },
+      {
+        "success": true,
+        "duration": 4668,
+        "command": "pnpm build:mcp",
+        "description": "Build MCP package"
+      },
+      {
+        "success": true,
+        "duration": 4245,
+        "command": "pnpm build:vscode",
+        "description": "Build VSCode extension"
+      },
+      {
+        "success": true,
+        "duration": 1146,
+        "command": "pnpm -r --filter=\"./packages/chrome-extension\" build",
+        "description": "Build Chrome extension"
+      }
+    ]
   }
 ]

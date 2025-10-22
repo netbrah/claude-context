@@ -18,7 +18,16 @@ const SPLITTABLE_NODE_TYPES = {
     typescript: ['function_declaration', 'arrow_function', 'class_declaration', 'method_definition', 'export_statement', 'interface_declaration', 'type_alias_declaration'],
     python: ['function_definition', 'class_definition', 'decorated_definition', 'async_function_definition'],
     java: ['method_declaration', 'class_declaration', 'interface_declaration', 'constructor_declaration'],
-    cpp: ['function_definition', 'class_specifier', 'namespace_definition', 'declaration'],
+    cpp: [
+        'function_definition',
+        'class_specifier',
+        'struct_specifier',
+        'enum_specifier',
+        'namespace_definition',
+        'template_declaration',
+        'type_definition',
+        'union_specifier'
+    ],
     go: ['function_declaration', 'method_declaration', 'type_declaration', 'var_declaration', 'const_declaration'],
     rust: ['function_item', 'impl_item', 'struct_item', 'enum_item', 'trait_item', 'mod_item'],
     csharp: ['method_declaration', 'class_declaration', 'interface_declaration', 'struct_declaration', 'enum_declaration'],
