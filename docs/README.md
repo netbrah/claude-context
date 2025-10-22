@@ -21,6 +21,9 @@ Welcome to the Claude Context documentation! Claude Context is a powerful tool t
 - [Asynchronous Indexing Workflow](dive-deep/asynchronous-indexing-workflow.md) - Detailed explanation of asynchronous indexing workflow
 - [AST Splitter Improvements for C/C++](dive-deep/ast-splitter-improvements.md) - Enhanced C/C++ support for large codebases (38% improvement)
 
+### Development
+- [Testing and Benchmarking Guide](development/testing-and-benchmarking.md) - How to run tests and benchmarks
+
 ### Troubleshooting
 - [❓ FAQ](troubleshooting/faq.md) - Frequently asked questions
 - [🐛 Troubleshooting Guide](troubleshooting/troubleshooting-guide.md) - Troubleshooting guide
