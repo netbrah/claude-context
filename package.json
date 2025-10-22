@@ -13,6 +13,8 @@
         "dev:vscode": "pnpm --filter semanticcodesearch watch",
         "dev:mcp": "pnpm --filter @zilliz/claude-context-mcp dev",
         "clean": "pnpm -r clean",
+        "test": "pnpm -r test",
+        "test:core": "pnpm --filter @zilliz/claude-context-core test",
         "lint": "pnpm -r lint",
         "lint:fix": "pnpm -r run lint:fix",
         "typecheck": "pnpm -r run typecheck",
@@ -21,6 +23,7 @@
         "release:vscode": "pnpm --filter @zilliz/claude-context-core build && pnpm --filter semanticcodesearch run webpack && pnpm --filter semanticcodesearch release",
         "example:basic": "pnpm --filter claude-context-basic-example start",
         "benchmark": "node scripts/build-benchmark.js",
+        "benchmark:cpp": "node scripts/cpp-benchmark.js",
         "pack": "pnpm pack --pack-destination ./dist && mv ./dist/claude-context-*.tgz ./dist/claude-context.tgz",
         "pack:core": "pnpm --filter @zilliz/claude-context-core pack",
         "pack:mcp": "pnpm --filter @zilliz/claude-context-mcp pack"
