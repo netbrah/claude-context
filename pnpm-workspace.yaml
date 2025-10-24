@@ -3,4 +3,23 @@ packages:
   - examples/*
 
 ignoredBuiltDependencies:
+  - '@vscode/vsce-sign'
+  - esbuild
   - faiss-node
+  - keytar
+  - protobufjs
+  - tree-sitter
+  - tree-sitter-c-sharp
+  - tree-sitter-cli
+  - tree-sitter-cpp
+  - tree-sitter-go
+  - tree-sitter-java
+  - tree-sitter-javascript
+  - tree-sitter-python
+  - tree-sitter-rust
+  - tree-sitter-scala
+  - tree-sitter-typescript
+  - unrs-resolver
+
+onlyBuiltDependencies:
+  - '@ganezdragon/tree-sitter-perl'
