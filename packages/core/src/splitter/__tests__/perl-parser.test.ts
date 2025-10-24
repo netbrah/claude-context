@@ -6,6 +6,8 @@ import * as path from 'path';
 describe('AstCodeSplitter - Perl (.thpl) Parsing', () => {
   let splitter: AstCodeSplitter;
   const fixturesDir = path.join(__dirname, 'fixtures');
+  // Allow for overlap tolerance in line number continuity checks
+  const OVERLAP_TOLERANCE_LINES = 50;
 
   beforeEach(() => {
     // Initialize splitter with reasonable chunk sizes for testing
@@ -19,7 +21,7 @@ use strict;
 use warnings;
 
 sub hello {
-    print "Hello, World!\\n";
+    print "Hello, World!\n";
 }
 
 sub add {
@@ -68,7 +70,7 @@ sub add {
     it('should extract subroutine definitions', async () => {
       const code = `
 sub print_hello {
-    print "Hello\\n";
+    print "Hello\n";
 }
 
 sub calculate {
@@ -372,7 +374,7 @@ sub function2 {  # Line 7
           const prevChunk = chunks[index - 1];
           // Current chunk should not start before previous chunk started (allowing for overlap)
           expect(chunk.metadata.startLine).toBeGreaterThanOrEqual(
-            prevChunk.metadata.startLine - 50
+            prevChunk.metadata.startLine - OVERLAP_TOLERANCE_LINES
           );
         }
       });
