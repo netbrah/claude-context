@@ -29,7 +29,7 @@ const DEFAULT_SUPPORTED_EXTENSIONS = [
     '.cs', '.go', '.rs', '.php', '.rb', '.swift', '.kt', '.scala', '.m', '.mm',
     '.cc', '.ut', '.pl', '.pm', '.thpl',
     // Text and markup files
-    '.md', '.markdown', '.ipynb',
+    '.md', '.markdown', '.ipynb', '.smf',
     // '.txt',  '.json', '.yaml', '.yml', '.xml', '.html', '.htm',
     // '.css', '.scss', '.less', '.sql', '.sh', '.bash', '.env'
 ];
@@ -909,7 +909,8 @@ export class Context {
             '.ipynb': 'jupyter',
             '.pl': 'perl',
             '.pm': 'perl',
-            '.thpl': 'perl'
+            '.thpl': 'perl',
+            '.smf': 'smf'
         };
         return languageMap[ext] || 'text';
     }
