@@ -23,6 +23,7 @@ cpp-benchmark-results.json
 
 # Packaged archives (except pre-built ones in root)
 packages/**/*.tgz
+zilliz-claude-context-*.tgz
 
 # Environment variables
 .env

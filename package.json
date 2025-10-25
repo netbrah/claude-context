@@ -25,8 +25,9 @@
         "benchmark": "node scripts/build-benchmark.js",
         "benchmark:cpp": "node scripts/cpp-benchmark.js",
         "pack": "pnpm pack --pack-destination ./dist && mv ./dist/claude-context-*.tgz ./dist/claude-context.tgz",
-        "pack:core": "pnpm --filter @zilliz/claude-context-core pack",
-        "pack:mcp": "pnpm --filter @zilliz/claude-context-mcp pack"
+        "pack:core": "pnpm run build:core && pnpm --filter @zilliz/claude-context-core pack",
+        "pack:mcp": "pnpm run build:mcp && pnpm --filter @zilliz/claude-context-mcp pack",
+        "pack:all": "pnpm run pack:core && pnpm run pack:mcp"
     },
     "devDependencies": {
         "@types/node": "^20.0.0",
