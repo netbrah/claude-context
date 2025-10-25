@@ -47,6 +47,8 @@ const DEFAULT_IGNORE_PATTERNS = [
     // IDE and editor files
     '.vscode/**',
     '.idea/**',
+    '**/.history/**',
+    '**/.lh/**',
     '*.swp',
     '*.swo',
 
