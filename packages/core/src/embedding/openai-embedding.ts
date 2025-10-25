@@ -39,7 +39,6 @@ export class OpenAIEmbedding extends Embedding {
 
             // Check if it's a retryable error
             const isRetryable =
-                errorMessage.includes('401') ||
                 errorMessage.includes('429') ||
                 errorMessage.includes('503') ||
                 errorMessage.includes('timeout') ||
@@ -73,7 +72,7 @@ export class OpenAIEmbedding extends Embedding {
         try {
             const processedText = this.preprocessText(testText);
             const response = await this.retryWithBackoff(
-                async () => await this.client.embeddings.create({
+                async () => this.client.embeddings.create({
                     model: model,
                     input: processedText,
                     encoding_format: 'float',
@@ -107,7 +106,7 @@ export class OpenAIEmbedding extends Embedding {
 
         try {
             const response = await this.retryWithBackoff(
-                async () => await this.client.embeddings.create({
+                async () => this.client.embeddings.create({
                     model: model,
                     input: processedText,
                     encoding_format: 'float',
@@ -141,7 +140,7 @@ export class OpenAIEmbedding extends Embedding {
 
         try {
             const response = await this.retryWithBackoff(
-                async () => await this.client.embeddings.create({
+                async () => this.client.embeddings.create({
                     model: model,
                     input: processedTexts,
                     encoding_format: 'float',
