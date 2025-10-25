@@ -1,6 +1,9 @@
 import { AstCodeSplitter } from '../ast-splitter';
 import { LangChainCodeSplitter } from '../langchain-splitter';
 
+// Test constants
+const LARGE_CONTENT_TRACK_COUNT = 50;
+
 describe('SMF File Parsing', () => {
   let astSplitter: AstCodeSplitter;
   let langchainSplitter: LangChainCodeSplitter;
@@ -45,7 +48,7 @@ Event: Note Off
     it('should split large SMF content into chunks', async () => {
       // Create a larger SMF-like content
       let largeContent = 'MThd\nHeader chunk\n\n';
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < LARGE_CONTENT_TRACK_COUNT; i++) {
         largeContent += `MTrk\nTrack ${i}\nDelta time: ${i * 100}\nEvent: Note On\nChannel: ${i % 16}\n\n`;
       }
 
@@ -167,8 +170,8 @@ Track 2`;
 
       const chunks = await langchainSplitter.split(code, 'smf');
 
-      // All content should be preserved
-      const allContent = chunks.map(c => c.content).join('\n');
+      // All content should be preserved - verify by checking key components
+      const allContent = chunks.map(c => c.content).join('');
       expect(allContent).toContain('MThd');
       expect(allContent).toContain('Track 1');
       expect(allContent).toContain('Track 2');
