@@ -27,7 +27,7 @@ const DEFAULT_SUPPORTED_EXTENSIONS = [
     // Programming languages
     '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cpp', '.c', '.h', '.hpp',
     '.cs', '.go', '.rs', '.php', '.rb', '.swift', '.kt', '.scala', '.m', '.mm',
-    '.cc', '.ut',
+    '.cc', '.ut', '.pl', '.pm', '.thpl',
     // Text and markup files
     '.md', '.markdown', '.ipynb',
     // '.txt',  '.json', '.yaml', '.yml', '.xml', '.html', '.htm',
@@ -906,7 +906,10 @@ export class Context {
             '.scala': 'scala',
             '.m': 'objective-c',
             '.mm': 'objective-c',
-            '.ipynb': 'jupyter'
+            '.ipynb': 'jupyter',
+            '.pl': 'perl',
+            '.pm': 'perl',
+            '.thpl': 'perl'
         };
         return languageMap[ext] || 'text';
     }

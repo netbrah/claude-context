@@ -1,0 +1,101 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use feature 'say';
+
+package Shape;
+
+sub new {
+    my ($class, %args) = @_;
+    my $self = \%args;
+    bless $self, $class;
+    return $self;
+}
+
+sub area {
+    my $self = shift;
+    die "Must implement area() in subclass";
+}
+
+package Rectangle;
+use parent 'Shape';
+
+sub new {
+    my ($class, $width, $height) = @_;
+    my $self = $class->SUPER::new(
+        width => $width,
+        height => $height
+    );
+    return $self;
+}
+
+sub area {
+    my $self = shift;
+    return $self->{width} * $self->{height};
+}
+
+package Circle;
+use parent 'Shape';
+
+sub new {
+    my ($class, $radius) = @_;
+    my $self = $class->SUPER::new(radius => $radius);
+    return $self;
+}
+
+sub area {
+    my $self = shift;
+    return 3.14159 * $self->{radius} ** 2;
+}
+
+package StringUtils;
+
+sub reverse_string {
+    my ($str) = @_;
+    return scalar reverse $str;
+}
+
+sub count_words {
+    my ($str) = @_;
+    my @words = split /\s+/, $str;
+    return scalar @words;
+}
+
+sub palindrome {
+    my ($str) = @_;
+    my $clean = lc($str);
+    $clean =~ s/[^a-z0-9]//g;
+    return $clean eq reverse($clean);
+}
+
+package ArrayUtils;
+
+sub find_max {
+    my @array = @_;
+    return undef unless @array;
+    my $max = $array[0];
+    foreach my $val (@array) {
+        $max = $val if $val > $max;
+    }
+    return $max;
+}
+
+sub find_min {
+    my @array = @_;
+    return undef unless @array;
+    my $min = $array[0];
+    foreach my $val (@array) {
+        $min = $val if $val < $min;
+    }
+    return $min;
+}
+
+sub average {
+    my @array = @_;
+    return undef unless @array;
+    my $sum = 0;
+    $sum += $_ for @array;
+    return $sum / scalar @array;
+}
+
+1;
