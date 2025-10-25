@@ -11,20 +11,7 @@ const Go = require('tree-sitter-go');
 const Rust = require('tree-sitter-rust');
 const CSharp = require('tree-sitter-c-sharp');
 const Scala = require('tree-sitter-scala');
-
-// Lazy load Perl parser to avoid loading issues if native build is not available
-let Perl: any = null;
-function getPerl() {
-    if (Perl === null) {
-        try {
-            Perl = require('@ganezdragon/tree-sitter-perl');
-        } catch (error) {
-            console.warn('[ASTSplitter] ⚠️  Failed to load tree-sitter-perl, will use fallback:', error);
-            Perl = undefined; // Mark as unavailable
-        }
-    }
-    return Perl;
-}
+const Perl = require('@ganezdragon/tree-sitter-perl');
 
 // Node types that represent logical code units
 const SPLITTABLE_NODE_TYPES = {
@@ -124,19 +111,11 @@ export class AstCodeSplitter implements Splitter {
             'rs': { parser: Rust, nodeTypes: SPLITTABLE_NODE_TYPES.rust },
             'cs': { parser: CSharp, nodeTypes: SPLITTABLE_NODE_TYPES.csharp },
             'csharp': { parser: CSharp, nodeTypes: SPLITTABLE_NODE_TYPES.csharp },
-            'scala': { parser: Scala, nodeTypes: SPLITTABLE_NODE_TYPES.scala }
+            'scala': { parser: Scala, nodeTypes: SPLITTABLE_NODE_TYPES.scala },
+            'perl': { parser: Perl, nodeTypes: SPLITTABLE_NODE_TYPES.perl },
+            'pl': { parser: Perl, nodeTypes: SPLITTABLE_NODE_TYPES.perl },
+            'pm': { parser: Perl, nodeTypes: SPLITTABLE_NODE_TYPES.perl }
         };
-
-        // Handle Perl separately with lazy loading
-        const lowerLang = language.toLowerCase();
-        if (lowerLang === 'perl' || lowerLang === 'pl' || lowerLang === 'pm') {
-            const PerlParser = getPerl();
-            if (PerlParser) {
-                return { parser: PerlParser, nodeTypes: SPLITTABLE_NODE_TYPES.perl };
-            }
-            // If Perl parser is not available, return null to use fallback
-            return null;
-        }
 
         return langMap[language.toLowerCase()] || null;
     }
@@ -298,15 +277,9 @@ export class AstCodeSplitter implements Splitter {
     static isLanguageSupported(language: string): boolean {
         const supportedLanguages = [
             'javascript', 'js', 'typescript', 'ts', 'python', 'py',
-            'java', 'cpp', 'c++', 'c', 'go', 'rust', 'rs', 'cs', 'csharp', 'scala'
+            'java', 'cpp', 'c++', 'c', 'go', 'rust', 'rs', 'cs', 'csharp', 'scala',
+            'perl', 'pl', 'pm'
         ];
-        
-        // Check Perl support dynamically
-        const lowerLang = language.toLowerCase();
-        if (lowerLang === 'perl' || lowerLang === 'pl' || lowerLang === 'pm') {
-            const PerlParser = getPerl();
-            return PerlParser !== undefined && PerlParser !== null;
-        }
         
         return supportedLanguages.includes(language.toLowerCase());
     }

@@ -403,24 +403,17 @@ sub function2 {  # Line 7
   });
 
   describe('Language Support Detection', () => {
-    it('should check if Perl is supported by AST splitter', () => {
-      // Perl support depends on whether tree-sitter-perl native build is available
-      const isPerlSupported = AstCodeSplitter.isLanguageSupported('perl');
-      
-      // Test should work regardless of whether Perl is available
-      if (isPerlSupported) {
-        expect(AstCodeSplitter.isLanguageSupported('pl')).toBe(true);
-        expect(AstCodeSplitter.isLanguageSupported('pm')).toBe(true);
-        console.log('✅ Perl AST support is available');
-      } else {
-        console.log('⚠️  Perl AST support not available (native build missing), will use LangChain fallback');
-      }
+    it('should indicate Perl is supported by AST splitter', () => {
+      // Perl is now directly loaded, so it should always be supported
+      expect(AstCodeSplitter.isLanguageSupported('perl')).toBe(true);
+      expect(AstCodeSplitter.isLanguageSupported('pl')).toBe(true);
+      expect(AstCodeSplitter.isLanguageSupported('pm')).toBe(true);
     });
 
-    it('should handle Perl code whether AST splitter is available or not', async () => {
+    it('should use AST splitter for Perl code', async () => {
       const code = 'sub test { return 1; }';
       
-      // Should work either with AST splitter or LangChain fallback
+      // Should use AST splitter with tree-sitter-perl
       const chunks = await splitter.split(code, 'perl', 'test.thpl');
       
       expect(chunks).toBeDefined();
