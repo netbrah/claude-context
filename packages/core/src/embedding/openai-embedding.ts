@@ -12,6 +12,8 @@ export class OpenAIEmbedding extends Embedding {
     private config: OpenAIEmbeddingConfig;
     private dimension: number = 1536; // Default dimension for text-embedding-3-small
     protected maxTokens: number = 8192; // Maximum tokens for OpenAI embedding models
+    private maxRetries: number = 3;
+    private retryDelay: number = 1000; // Initial retry delay in ms
 
     constructor(config: OpenAIEmbeddingConfig) {
         super();
@@ -20,6 +22,42 @@ export class OpenAIEmbedding extends Embedding {
             apiKey: config.apiKey,
             baseURL: config.baseURL,
         });
+    }
+
+    /**
+     * Retry helper for handling transient errors
+     */
+    private async retryWithBackoff<T>(
+        fn: () => Promise<T>,
+        operation: string,
+        attempt: number = 0
+    ): Promise<T> {
+        try {
+            return await fn();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+            // Check if it's a retryable error
+            const isRetryable =
+                errorMessage.includes('401') ||
+                errorMessage.includes('429') ||
+                errorMessage.includes('503') ||
+                errorMessage.includes('timeout') ||
+                errorMessage.includes('ECONNRESET') ||
+                errorMessage.includes('ETIMEDOUT');
+
+            if (isRetryable && attempt < this.maxRetries) {
+                const delay = this.retryDelay * Math.pow(2, attempt);
+                console.warn(`[OpenAIEmbedding] ⚠️ ${operation} failed (attempt ${attempt + 1}/${this.maxRetries}): ${errorMessage}`);
+                console.warn(`[OpenAIEmbedding] ⏳ Retrying in ${delay}ms...`);
+
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return this.retryWithBackoff(fn, operation, attempt + 1);
+            }
+
+            // If not retryable or max retries reached, throw the error
+            throw error;
+        }
     }
 
     async detectDimension(testText: string = "test"): Promise<number> {
@@ -34,11 +72,14 @@ export class OpenAIEmbedding extends Embedding {
         // For custom models, make API call to detect dimension
         try {
             const processedText = this.preprocessText(testText);
-            const response = await this.client.embeddings.create({
-                model: model,
-                input: processedText,
-                encoding_format: 'float',
-            });
+            const response = await this.retryWithBackoff(
+                async () => await this.client.embeddings.create({
+                    model: model,
+                    input: processedText,
+                    encoding_format: 'float',
+                }),
+                'detectDimension'
+            );
             return response.data[0].embedding.length;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -65,11 +106,14 @@ export class OpenAIEmbedding extends Embedding {
         }
 
         try {
-            const response = await this.client.embeddings.create({
-                model: model,
-                input: processedText,
-                encoding_format: 'float',
-            });
+            const response = await this.retryWithBackoff(
+                async () => await this.client.embeddings.create({
+                    model: model,
+                    input: processedText,
+                    encoding_format: 'float',
+                }),
+                'embed'
+            );
 
             // Update dimension from actual response
             this.dimension = response.data[0].embedding.length;
@@ -96,11 +140,14 @@ export class OpenAIEmbedding extends Embedding {
         }
 
         try {
-            const response = await this.client.embeddings.create({
-                model: model,
-                input: processedTexts,
-                encoding_format: 'float',
-            });
+            const response = await this.retryWithBackoff(
+                async () => await this.client.embeddings.create({
+                    model: model,
+                    input: processedTexts,
+                    encoding_format: 'float',
+                }),
+                'embedBatch'
+            );
 
             this.dimension = response.data[0].embedding.length;
 
