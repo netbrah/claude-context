@@ -14,6 +14,20 @@ const CSharp = require('tree-sitter-c-sharp');
 const Scala = require('tree-sitter-scala');
 const Perl = require('@ganezdragon/tree-sitter-perl');
 
+// Validate critical parsers are loaded
+if (!Cpp) {
+    throw new Error('tree-sitter-cpp parser failed to load. Please ensure tree-sitter-cpp is properly installed.');
+}
+if (!JavaScript) {
+    throw new Error('tree-sitter-javascript parser failed to load.');
+}
+if (!TypeScript) {
+    throw new Error('tree-sitter-typescript parser failed to load.');
+}
+if (!Python) {
+    throw new Error('tree-sitter-python parser failed to load.');
+}
+
 // Node types that represent logical code units
 const SPLITTABLE_NODE_TYPES = {
     javascript: ['function_declaration', 'arrow_function', 'class_declaration', 'method_definition', 'export_statement'],
@@ -88,7 +102,12 @@ export class AstCodeSplitter implements Splitter {
 
             return refinedChunks;
         } catch (error) {
-            console.warn(`[ASTSplitter] ⚠️  AST splitter failed for ${language}, falling back to LangChain: ${error}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : '';
+            console.warn(`[ASTSplitter] ⚠️  AST splitter failed for ${language}, falling back to LangChain: ${errorMessage}`);
+            if (errorStack) {
+                console.warn(`[ASTSplitter] Error stack: ${errorStack}`);
+            }
             return await this.langchainFallback.split(code, language, filePath);
         }
     }
