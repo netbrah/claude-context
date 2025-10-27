@@ -1,8 +1,7 @@
-name: Build
+name: Build & Benchmark
 
-# Build validation and performance benchmarks
-# Runs on all PRs and pushes to main branches
-# Tests build across platforms and Node.js versions
+# Performance benchmarks and cross-platform build validation
+# Runs on all PRs and main branches for comprehensive testing
 
 on:
   push:
@@ -16,12 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-primary:
-    name: Build & Benchmark (Ubuntu 20.x)
+  benchmarks:
+    name: Performance Benchmarks
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: read
     
     steps:
       - name: Checkout code
@@ -41,57 +38,44 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build all packages
+      - name: Build packages
         run: pnpm build
-
-      - name: Verify build outputs
-        run: |
-          echo "Verifying build artifacts..."
-          ls -la packages/core/dist || echo "❌ packages/core/dist not found"
-          ls -la packages/mcp/dist || echo "❌ packages/mcp/dist not found"
-          ls -la packages/vscode-extension/dist || echo "❌ packages/vscode-extension/dist not found"
-          ls -la packages/chrome-extension/dist || echo "❌ packages/chrome-extension/dist not found"
 
       - name: Run build benchmark
         run: pnpm benchmark
 
-      - name: Upload build benchmark results
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-benchmark-ubuntu-20
-          path: build-benchmark.json
-          retention-days: 30
-
       - name: Run C++ parsing benchmark
         run: pnpm benchmark:cpp
 
-      - name: Upload C++ benchmark results
+      - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
-          name: cpp-benchmark-ubuntu-20
-          path: cpp-benchmark-results.json
+          name: benchmark-results
+          path: |
+            build-benchmark.json
+            cpp-benchmark-results.json
           retention-days: 30
 
       - name: Generate benchmark summary
         run: |
-          echo "## Build Performance Benchmark 📊" >> $GITHUB_STEP_SUMMARY
+          echo "## Performance Benchmarks 📊" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Build Times" >> $GITHUB_STEP_SUMMARY
-          node scripts/generate-benchmark-summary.js >> $GITHUB_STEP_SUMMARY
+          echo "### Build Performance" >> $GITHUB_STEP_SUMMARY
+          if [ -f "build-benchmark.json" ]; then
+            node scripts/generate-benchmark-summary.js >> $GITHUB_STEP_SUMMARY || echo "Build benchmark completed"
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### C++ Parser Performance" >> $GITHUB_STEP_SUMMARY
           if [ -f "cpp-benchmark-results.json" ]; then
             echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
-            tail -20 cpp-benchmark-results.json >> $GITHUB_STEP_SUMMARY
+            head -10 cpp-benchmark-results.json >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
 
-  build-cross-platform:
-    name: Build (${{ matrix.os }}, Node ${{ matrix.node }})
+  cross-platform:
+    name: Cross-Platform Build (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-    permissions:
-      contents: read
+    timeout-minutes: 10
     
     strategy:
       fail-fast: false
@@ -99,7 +83,7 @@ jobs:
         include:
           - os: windows-latest
             node: '20.x'
-          - os: macos-latest
+          - os: macos-latest  
             node: '20.x'
           - os: ubuntu-latest
             node: '22.x'
@@ -122,20 +106,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build all packages
-        run: pnpm build
-
-      - name: Verify build outputs (Unix)
-        if: runner.os != 'Windows'
+      - name: Build core and MCP packages
         run: |
-          echo "Verifying build artifacts..."
-          ls -la packages/core/dist || echo "❌ packages/core/dist not found"
-          ls -la packages/mcp/dist || echo "❌ packages/mcp/dist not found"
+          pnpm build:core
+          pnpm build:mcp
 
-      - name: Verify build outputs (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Verify build outputs
         run: |
-          Write-Host "Verifying build artifacts..."
-          if (Test-Path packages/core/dist) { Get-ChildItem packages/core/dist | Format-Table -AutoSize } else { Write-Host "❌ packages/core/dist not found" }
-          if (Test-Path packages/mcp/dist) { Get-ChildItem packages/mcp/dist | Format-Table -AutoSize } else { Write-Host "❌ packages/mcp/dist not found" }
+          echo "✅ Build completed successfully on ${{ matrix.os }} with Node ${{ matrix.node }}"

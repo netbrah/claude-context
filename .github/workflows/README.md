@@ -1,194 +1,287 @@
-# GitHub Actions Workflows
+# CI/CD Pipeline Guide
 
-This directory contains the optimized CI/CD workflows for the Claude Context project.
+This document describes the optimized CI/CD workflows for the Claude Context monorepo.
 
-## Workflow Overview
+## Overview
 
-### 🔍 [lint.yml](lint.yml) - Code Quality (Fast Fail)
-**Triggers**: All PRs and pushes to main branches  
-**Duration**: ~1-2 minutes  
-**Purpose**: Fast feedback on code quality issues
+Our pipeline is optimized for:
+- **Fast feedback**: Fail-fast approach with quick linting and testing
+- **No redundancy**: Workflows run only when needed, no duplicate work  
+- **Easy artifact access**: Dev branches get automatic releases with downloadable .tgz packages
+- **Clear release strategy**: Separate workflows for dev testing vs. production releases
 
-- ✅ TypeScript type checking
-- ✅ ESLint linting (continues on error to show all issues)
-- ⚡ Runs first for quick feedback
+## Workflows
 
-### 🧪 [test.yml](test.yml) - Test Suite
-**Triggers**: All PRs and pushes to main branches  
-**Duration**: ~5-10 minutes  
-**Purpose**: Comprehensive test coverage
+### 1. CI (`ci.yml`) - Fast Feedback Loop
 
-- ✅ Core package unit tests with coverage
-- ✅ AST parser tests  
-- 📊 Uploads coverage reports
-- 🌳 Tests tree-sitter parsers for all languages
+**Triggers:** All pull requests and pushes to main branches
 
-### 🏗️ [build.yml](build.yml) - Build Validation & Benchmarks
-**Triggers**: All PRs and pushes to main branches  
-**Duration**: ~10-15 minutes  
-**Purpose**: Ensure builds work across platforms
+**Purpose:** Provide fast feedback on code quality
 
-**Primary Build (Ubuntu 20.x)**:
-- ✅ Build all packages
-- 📊 Run build performance benchmark
-- ⚡ Run C++ parser performance benchmark
-- 📈 Generate performance summaries
+**Steps:**
+1. **Lint** (fastest - catches TypeScript and style issues)
+2. **Build** (catches compilation errors)  
+3. **Test** (most thorough validation including flaky test handling)
 
-**Cross-Platform Matrix**:
-- ✅ Windows (Node 20.x)
-- ✅ macOS (Node 20.x)
-- ✅ Ubuntu (Node 22.x)
+**Strategy:** Fail-fast approach - if linting fails, build and tests don't run.
 
-### 🚧 [release-dev.yml](release-dev.yml) - Development Releases
-**Triggers**: Push tags matching `dev-*` (e.g., `dev-v1.0.0`)  
-**Duration**: ~15-20 minutes  
-**Purpose**: Create pre-releases for testing
+**Duration:** ~3-5 minutes
 
-**Creates GitHub Pre-release with**:
-- 📦 Core package tarball (`zilliz-claude-context-core-*.tgz`)
-- 📦 MCP package tarball (`zilliz-claude-context-mcp-*.tgz`)
-- 📦 VSCode extension VSIX (`semanticcodesearch-*.vsix`)
-- 📊 Build benchmark results
-- ⚡ C++ parser benchmark results
+**Key Features:**
+- ✅ TypeScript type checking with proper build dependencies
+- ✅ ESLint with modern flat config (warnings don't fail CI)
+- ✅ Comprehensive test suite with flaky test isolation
+- ✅ Coverage reports uploaded as artifacts
 
-**Installation from Dev Release**:
+---
+
+### 2. Build Development Artifacts (`build-dev-artifacts.yml`)
+
+**Triggers:** All pushes to non-main branches
+
+**Purpose:** Create easily accessible .tgz packages for development and testing
+
+**Key Features:**
+- ✅ Creates GitHub Release for each dev branch
+- ✅ **Replaces** previous release/tag for the same branch (no clutter)
+- ✅ Includes detailed changelog with commits since last build
+- ✅ Shows commit author attribution
+- ✅ Downloadable .tgz packages for core and MCP
+
+**Tag Format:** `dev-<branch-name>` (e.g., `dev-feature-new-indexing`)
+
+**Packages Created:**
+- `zilliz-claude-context-core-<version>.tgz`
+- `zilliz-claude-context-mcp-<version>.tgz`
+
+**Release Notes Include:**
+- Branch name and latest commit
+- Build timestamp
+- Changes since last dev build for this branch
+- Installation instructions for .tgz packages
+- Testing commands
+
+**Artifact Access:**
+- **GitHub Release**: Go to Releases → Find your branch tag → Download .tgz
+- **Workflow Artifacts**: Available for 30 days in Actions tab
+
+**Duration:** ~4-6 minutes
+
+---
+
+### 3. Build & Benchmark (`build.yml`)
+
+**Triggers:** All PRs and pushes to main branches
+
+**Purpose:** Performance validation and cross-platform compatibility
+
+**Key Features:**
+- ✅ Performance benchmarks (build times, C++ parsing speed)
+- ✅ Cross-platform build validation (Windows, macOS, Linux)
+- ✅ Multiple Node.js version testing
+- ✅ Benchmark results uploaded as artifacts
+
+**Duration:** ~8-12 minutes
+
+---
+
+### 4. Release Production (`release-prod.yml`)
+
+**Triggers:** Manual workflow dispatch only
+
+**Purpose:** Create official releases with .tgz packages and optional npm publishing
+
+**When to Use:** When ready to release a new version to users
+
+**Input Parameters:**
+- `version`: Release version (e.g., `1.0.2`)
+- `core_version`: Core package version (optional, defaults to main version)
+- `mcp_version`: MCP package version (optional, defaults to main version)
+- `publish_npm`: Whether to publish to npm registry
+
+**Steps:**
+1. Validate version format and uniqueness
+2. Run full CI pipeline (lint, build, test)
+3. Update package.json versions
+4. Build and create .tgz packages
+5. Generate comprehensive release notes
+6. Create Git tag and GitHub release
+7. Optionally publish to npm
+
+**Requirements:**
+- Version must follow semver format (X.Y.Z)
+- Secrets required for npm publishing: `NPM_TOKEN`
+
+**Tag Format:** `v<version>` (e.g., `v1.0.2`)
+
+**Duration:** ~8-15 minutes
+
+---
+
+## Typical Workflows
+
+### Feature Development
+
+1. **Create feature branch**: `git checkout -b feature-new-indexing`
+2. **Push commits**: Each push triggers **Build Dev Artifacts**
+3. **Download packages**: Go to Releases → `dev-feature-new-indexing` → Download .tgz files
+4. **Test locally**:
+   ```bash
+   npm install ./zilliz-claude-context-core-*.tgz
+   npm install ./zilliz-claude-context-mcp-*.tgz
+   ```
+5. **Push more commits**: Release automatically updates (replaces old one)
+6. **Create PR**: Triggers **CI** and **Build & Benchmark** workflows
+7. **Merge to main**: Triggers **CI** and **Build & Benchmark**
+
+### Testing Dev Packages
+
 ```bash
-# Download artifacts from the GitHub release page
+# Download .tgz files from GitHub release, then:
+
+# Test core package
 npm install ./zilliz-claude-context-core-*.tgz
-npm install ./zilliz-claude-context-mcp-*.tgz
+node -e "const {Context} = require('@zilliz/claude-context-core'); console.log('Core loaded');"
 
-# VSCode: Extensions → ... → Install from VSIX
+# Test MCP package
+npm install -g ./zilliz-claude-context-mcp-*.tgz
+npx @zilliz/claude-context-mcp
 ```
-
-### 🚀 [release-prod.yml](release-prod.yml) - Production Releases
-**Triggers**: Push tags matching `v*` (e.g., `v1.0.0`)  
-**Duration**: ~20-30 minutes  
-**Purpose**: Publish stable releases
-
-**Publishes to**:
-- 📦 npm: `@zilliz/claude-context-core`
-- 📦 npm: `@zilliz/claude-context-mcp`
-- 🔌 VSCode Marketplace: `semanticcodesearch`
-- 📋 GitHub Releases with artifacts
-
-**Installation**:
-```bash
-npm install @zilliz/claude-context-core
-npm install @zilliz/claude-context-mcp
-# VSCode: Search "Semantic Code Search" in Extensions
-```
-
-## Workflow Features
-
-### ⚡ Performance Optimizations
-
-1. **Concurrency Control**: Cancels in-progress runs when new commits are pushed
-2. **Dependency Caching**: Uses pnpm cache for faster installs
-3. **Fail-Fast Strategy**: Linting runs first to catch simple issues quickly
-4. **Parallel Jobs**: Cross-platform builds run in parallel
-
-### 📊 Reporting & Artifacts
-
-- **Workflow Summaries**: Each workflow generates a summary in the Actions UI
-- **Artifact Uploads**: Test coverage, benchmarks, and packages are preserved
-- **Retention**: Artifacts kept for 30 days (dev releases: 90 days)
-
-### 🎯 Trigger Strategy
-
-| Workflow | Push to Main | Pull Request | Tag `dev-*` | Tag `v*` |
-|----------|--------------|--------------|-------------|----------|
-| Lint     | ✅           | ✅           | -           | -        |
-| Test     | ✅           | ✅           | -           | -        |
-| Build    | ✅           | ✅           | -           | -        |
-| Release (Dev) | -       | -            | ✅          | -        |
-| Release (Prod) | -      | -            | -           | ✅       |
-
-## Creating Releases
-
-### Development Release
-```bash
-# Create and push a dev tag
-git tag dev-v1.0.0-alpha
-git push origin dev-v1.0.0-alpha
-
-# Or with a custom name
-git tag dev-feature-test
-git push origin dev-feature-test
-```
-
-This creates a **pre-release** on GitHub with downloadable artifacts for testing.
 
 ### Production Release
+
+1. **Ensure main branch is stable**
+2. **Run Release Production workflow manually**:
+   - Go to Actions → Release Production → Run workflow
+   - Input version number (e.g., `1.0.3`)
+   - Choose whether to publish to npm
+3. **Workflow creates**:
+   - Git tag (`v1.0.3`)
+   - GitHub release with .tgz packages
+   - Optional npm publication
+4. **Users can install**:
+   - From npm: `npm install @zilliz/claude-context-core@1.0.3`
+   - From .tgz: Download and `npm install ./package.tgz`
+
+---
+
+## Package Structure
+
+Our monorepo produces these main packages:
+
+### Core Package (`@zilliz/claude-context-core`)
+- **Purpose**: Core indexing engine with AST-based code splitting
+- **Exports**: Context class, embeddings, vector databases, splitters
+- **Installation**: `npm install @zilliz/claude-context-core`
+
+### MCP Package (`@zilliz/claude-context-mcp`)
+- **Purpose**: Model Context Protocol server for AI agent integration
+- **Exports**: MCP server executable
+- **Installation**: `npm install @zilliz/claude-context-mcp`
+- **Usage**: `npx @zilliz/claude-context-mcp`
+
+---
+
+## Optimization Details
+
+### What We Improved
+
+1. **Dev Branch Artifacts:**
+   - ✅ GitHub Releases instead of workflow artifacts (easier access)
+   - ✅ Automatic tag replacement (no spam)
+   - ✅ Detailed changelogs with author attribution
+   - ✅ Ready-to-install .tgz packages
+
+2. **Production Releases:**
+   - ✅ Manual trigger with version input validation
+   - ✅ Optional npm publishing
+   - ✅ Comprehensive testing before release
+   - ✅ Automatic version bumping and tagging
+
+3. **CI Pipeline:**
+   - ✅ Fixed TypeScript linking issues
+   - ✅ Modern ESLint flat config
+   - ✅ Proper handling of flaky tests
+   - ✅ Fast fail-fast approach
+
+4. **Performance Testing:**
+   - ✅ Separated benchmarks into dedicated workflow
+   - ✅ Cross-platform validation
+   - ✅ Performance regression detection
+
+### Performance Improvements
+
+- **Before**: Multiple overlapping workflows, 15-20 minutes total
+- **After**: Streamlined workflows, 4-6 minutes for dev feedback
+- **Redundancy**: Eliminated duplicate work across workflows
+
+---
+
+## Monitoring and Debugging
+
+### Check Workflow Status
+
 ```bash
-# Ensure version is bumped in package.json files
-# Create and push a version tag
-git tag v1.0.0
-git push origin v1.0.0
+# View all workflow runs
+gh run list
+
+# View specific workflow runs  
+gh run list --workflow=ci.yml
+
+# View logs for a specific run
+gh run view <run-id> --log
 ```
 
-This:
-1. Runs all tests
-2. Publishes to npm
-3. Publishes to VSCode Marketplace
-4. Creates a GitHub release
+### Common Issues
 
-## Required Secrets
+**Issue**: Dev artifact not appearing
+- **Solution**: Check Actions tab, then Releases tab after completion
 
-Configure these in repository settings → Secrets and variables → Actions:
+**Issue**: TypeScript linking errors
+- **Solution**: Ensure build step runs before typecheck in workflows
 
-- `NPM_TOKEN`: npm authentication token for publishing packages
-- `VSCE_PAT`: Visual Studio Code Personal Access Token for marketplace publishing
-- `GITHUB_TOKEN`: Automatically provided by GitHub Actions
+**Issue**: npm publish fails
+- **Solution**: Check NPM_TOKEN secret and version doesn't already exist
 
-## Workflow Execution Order
+**Issue**: Tag already exists error
+- **Solution**: Version validation should catch this, but manually delete tag if needed
 
-For PRs and commits:
-```
-Lint (1-2 min) → Test (5-10 min) → Build (10-15 min)
-     ↓                ↓                    ↓
-  (fail fast)    (core tests)      (cross-platform)
-```
+---
 
-All three workflows run in parallel, but Lint provides the fastest feedback.
+## Best Practices
 
-## Troubleshooting
+1. **Always test dev artifacts** before merging to main
+2. **Use semantic versioning** for production releases
+3. **Keep commits atomic** for better changelogs
+4. **Write clear commit messages** (they appear in release notes)
+5. **Monitor CI failures** and fix quickly
+6. **Test .tgz packages locally** before relying on npm
 
-### Workflow Fails
-1. Check the workflow summary in the Actions tab
-2. Review the specific job logs
-3. Download artifacts for debugging (test coverage, benchmarks)
+---
 
-### Dev Release Not Created
-- Ensure tag starts with `dev-`
-- Check workflow permissions in repository settings
+## Secrets Configuration
 
-### Production Release Fails
-- Verify `NPM_TOKEN` and `VSCE_PAT` secrets are set
-- Ensure tests pass before tagging
-- Check version numbers are properly bumped
+Required secrets for full functionality:
 
-## Maintenance
+| Secret | Purpose | Required For |
+|--------|---------|--------------|
+| `GITHUB_TOKEN` | Automatic releases | All workflows (auto-provided) |
+| `NPM_TOKEN` | npm registry publishing | Production releases (optional) |
 
-### Adding New Tests
-Update [test.yml](test.yml) to include new test commands.
+Configure secrets in: Repository Settings → Secrets and variables → Actions
 
-### Adding New Packages
-Update [build.yml](build.yml) to verify new package build outputs.
+---
 
-### Modifying Benchmarks
-Update [build.yml](build.yml) if benchmark commands or output formats change.
+## Summary
 
-## Migration from Old Workflows
+The optimized CI/CD pipeline provides:
 
-The following old workflows have been replaced:
+✅ **Fast feedback** - Developers know if their code passes in <5 minutes  
+✅ **Easy testing** - Dev builds available as .tgz packages via GitHub Releases  
+✅ **No clutter** - Dev releases replace old ones for the same branch  
+✅ **Clear history** - Detailed changelogs with author attribution  
+✅ **No redundancy** - Each workflow has a specific purpose  
+✅ **Production ready** - Manual releases with full validation and optional npm publishing  
+✅ **Monorepo optimized** - Proper handling of core and MCP packages  
 
-- ❌ `ci.yml` → ✅ `lint.yml` + `test.yml` + `build.yml`
-- ❌ `test-and-benchmark.yml` → ✅ `test.yml` + `build.yml`
-- ❌ `build-and-release-dev.yml` → ✅ `release-dev.yml`
-- ❌ `build-and-release-main.yml` → ✅ `release-prod.yml`
-
-Benefits:
-- ⚡ Faster feedback (separate lint job)
-- 📦 No redundancy (each job has clear purpose)
-- 🎯 Better artifact organization
-- 📊 Improved reporting and summaries
+This setup follows CI/CD best practices while being tailored to our monorepo structure and package distribution needs.

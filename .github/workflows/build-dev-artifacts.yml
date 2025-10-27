@@ -1,0 +1,163 @@
+name: Build Dev Artifacts
+
+# Creates .tgz packages for development branches
+# Provides easy access to test builds via GitHub Releases
+
+on:
+  push:
+    branches-ignore: [main, master, claude_context]
+
+# Cancel in-progress runs for same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-dev-artifacts:
+    name: Build Dev Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for changelog generation
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Create .tgz packages
+        run: |
+          echo "📦 Creating package archives..."
+          
+          # Create core package
+          echo "Building core package..."
+          cd packages/core
+          pnpm pack --pack-destination ../../dist
+          cd ../..
+          
+          # Create mcp package  
+          echo "Building MCP package..."
+          cd packages/mcp
+          pnpm pack --pack-destination ../../dist
+          cd ../..
+          
+          # List created packages
+          echo "Created packages:"
+          ls -la dist/*.tgz
+
+      - name: Extract branch name
+        id: branch
+        run: |
+          branch=${GITHUB_REF#refs/heads/}
+          # Replace special characters for tag name
+          tag_name="dev-$(echo "$branch" | sed 's/[^a-zA-Z0-9.-]/-/g')"
+          echo "branch=$branch" >> $GITHUB_OUTPUT
+          echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the last dev release for this branch to compare
+          last_release=$(gh release list --exclude-pre-releases --limit 100 --json tagName,name | jq -r '.[] | select(.tagName | startswith("dev-")) | select(.name | contains("${{ steps.branch.outputs.branch }}")) | .tagName' | head -1 || echo "")
+          
+          if [ -n "$last_release" ]; then
+            echo "Comparing with last dev release: $last_release"
+            changelog=$(git log --pretty=format:"- %s (%an)" ${last_release}..HEAD 2>/dev/null || git log --pretty=format:"- %s (%an)" -10)
+          else
+            echo "No previous dev release found, showing last 10 commits"
+            changelog=$(git log --pretty=format:"- %s (%an)" -10)
+          fi
+          
+          # Save changelog for release notes
+          cat > changelog.md << EOF
+          ## Development Build: ${{ steps.branch.outputs.branch }}
+          
+          **Branch:** \`${{ steps.branch.outputs.branch }}\`  
+          **Commit:** \`${GITHUB_SHA:0:7}\`  
+          **Built:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          
+          ### Changes
+          $changelog
+          
+          ### Installation
+          
+          1. Download the \`.tgz\` files from this release
+          2. Install packages:
+             \`\`\`bash
+             # Install core package
+             npm install ./zilliz-claude-context-core-*.tgz
+             
+             # Install MCP package  
+             npm install ./zilliz-claude-context-mcp-*.tgz
+             \`\`\`
+          
+          ### Testing
+          
+          \`\`\`bash
+          # Test core functionality
+          node -e "const {Context} = require('@zilliz/claude-context-core'); console.log('Core loaded successfully');"
+          
+          # Test MCP server
+          npx @zilliz/claude-context-mcp
+          \`\`\`
+          
+          ---
+          
+          *This is a development build for testing. For production use, install from npm or use tagged releases.*
+          EOF
+          
+          echo "changelog_file=changelog.md" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Delete existing dev release
+        run: |
+          # Delete existing release and tag for this branch (if exists)
+          gh release delete "${{ steps.branch.outputs.tag_name }}" --yes || true
+          git push --delete origin "${{ steps.branch.outputs.tag_name }}" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create dev release
+        run: |
+          gh release create "${{ steps.branch.outputs.tag_name }}" \
+            --title "Dev Build: ${{ steps.branch.outputs.branch }}" \
+            --notes-file "${{ steps.changelog.outputs.changelog_file }}" \
+            --prerelease \
+            dist/*.tgz
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: 📦 Summary
+        run: |
+          echo "## Dev Build Created 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ steps.branch.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release:** [${{ steps.branch.outputs.tag_name }}](https://github.com/${{ github.repository }}/releases/tag/${{ steps.branch.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Available Packages:" >> $GITHUB_STEP_SUMMARY
+          for file in dist/*.tgz; do
+            if [ -f "$file" ]; then
+              echo "- \`$(basename "$file")\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Quick Access:" >> $GITHUB_STEP_SUMMARY
+          echo "- [Download Packages](https://github.com/${{ github.repository }}/releases/tag/${{ steps.branch.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Changes](https://github.com/${{ github.repository }}/releases/tag/${{ steps.branch.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
