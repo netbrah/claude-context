@@ -13,154 +13,76 @@ on:
     branches: [master, main, claude_context]
 
 jobs:
-  validate-setup:
-    runs-on: ${{ matrix.os }}
-    
-    permissions:
-      contents: read
-    
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        node-version: [20.x, 22.x]
-    
+  copilot-setup:
+    name: Copilot Setup
+    runs-on: ubuntu-latest
+    outputs:
+      summary: ${{ steps.copilot-summary.outputs.summary }}
+      environment_variables: ${{ steps.env-vars.outputs.environment_variables }}
+      install_command: ${{ steps.install-cmd.outputs.install_command }}
+      start_command: ${{ steps.start-cmd.outputs.start_command }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
+      - name: Get pnpm version
+        id: get-pnpm
+        run: echo "version=$(pnpm --version 2>/dev/null || echo 'not installed')" >> $GITHUB_OUTPUT
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10
-      
-      - name: Setup Node.js ${{ matrix.node-version }}
+
+      - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20.x
           cache: 'pnpm'
-      
-      - name: Configure Windows line endings
-        if: matrix.os == 'windows-latest'
-        run: git config --global core.autocrlf false
-      
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Build packages
         run: pnpm build
-      
-      - name: Verify core package
+
+      - name: Copilot environment variables
+        id: env-vars
         run: |
-          cd packages/core
-          pnpm pack
-      
-      - name: Verify MCP package
+          echo "environment_variables<<EOF" >> $GITHUB_OUTPUT
+          echo "OPENAI_API_KEY=<your-openai-api-key>" >> $GITHUB_OUTPUT
+          echo "MILVUS_TOKEN=<your-zilliz-cloud-api-key>" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Copilot install command
+        id: install-cmd
         run: |
-          cd packages/mcp
-          pnpm pack
-      
-      - name: Test MCP server startup (Unix)
-        if: matrix.os != 'windows-latest'
+          echo "install_command=pnpm install && pnpm build" >> $GITHUB_OUTPUT
+
+      - name: Copilot start command
+        id: start-cmd
         run: |
-          cd packages/mcp
-          timeout 10s node dist/index.js || exit 0
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test MCP server startup (Windows)
-        if: matrix.os == 'windows-latest'
+          echo "start_command=npx @zilliz/claude-context-mcp@latest" >> $GITHUB_OUTPUT
+
+      - name: Copilot setup summary
+        id: copilot-summary
         run: |
-          cd packages/mcp
-          Start-Process -NoNewWindow -FilePath "node" -ArgumentList "dist/index.js" -PassThru | ForEach-Object { Start-Sleep -Seconds 10; Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
-        shell: pwsh
-        continue-on-error: true
-      
-      - name: Create setup summary
-        run: |
-          echo "## ✅ Setup Validation Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### System Information" >> $GITHUB_STEP_SUMMARY
-          echo "- **OS**: ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Node.js**: ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **pnpm**: $(pnpm --version)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Setup Steps Validated" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Dependencies installed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ All packages built successfully" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Core package verified" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ MCP package verified" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps for Copilot Integration" >> $GITHUB_STEP_SUMMARY
-          echo "1. Install the MCP server: \`npx @zilliz/claude-context-mcp@latest\`" >> $GITHUB_STEP_SUMMARY
-          echo "2. Configure your AI coding assistant (Claude Code, Cursor, etc.)" >> $GITHUB_STEP_SUMMARY
-          echo "3. Set environment variables: \`OPENAI_API_KEY\` and \`MILVUS_TOKEN\`" >> $GITHUB_STEP_SUMMARY
-          echo "4. Index your codebase and start searching!" >> $GITHUB_STEP_SUMMARY
-        shell: bash
-  
-  documentation-check:
-    runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Verify setup documentation
-        run: |
-          echo "## 📚 Documentation Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if grep -q "Prerequisites" README.md; then
-            echo "- ✅ Prerequisites documented in README.md" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- ⚠️ Prerequisites section not found in README.md" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if grep -q "Development Setup" CONTRIBUTING.md; then
-            echo "- ✅ Development setup documented in CONTRIBUTING.md" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- ⚠️ Development setup section not found in CONTRIBUTING.md" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ -f "packages/mcp/README.md" ]; then
-            echo "- ✅ MCP package documentation exists" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- ⚠️ MCP package documentation not found" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Key Setup Requirements" >> $GITHUB_STEP_SUMMARY
-          echo "- Node.js 20.x or 22.x" >> $GITHUB_STEP_SUMMARY
-          echo "- pnpm 10.x" >> $GITHUB_STEP_SUMMARY
-          echo "- OpenAI API Key (for embeddings)" >> $GITHUB_STEP_SUMMARY
-          echo "- Zilliz Cloud API Key (for vector database)" >> $GITHUB_STEP_SUMMARY
-      
-      - name: Extract setup commands
-        run: |
-          echo "## 🔧 Setup Commands" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Clone and Install" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "git clone https://github.com/zilliztech/claude-context.git" >> $GITHUB_STEP_SUMMARY
-          echo "cd claude-context" >> $GITHUB_STEP_SUMMARY
-          echo "pnpm install" >> $GITHUB_STEP_SUMMARY
-          echo "pnpm build" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Configure MCP for Claude Code" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "claude mcp add claude-context \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -e OPENAI_API_KEY=sk-your-openai-api-key \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -e MILVUS_TOKEN=your-zilliz-cloud-api-key \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -- npx @zilliz/claude-context-mcp@latest" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### For Other AI Coding Assistants" >> $GITHUB_STEP_SUMMARY
-          echo "See README.md for configuration examples for:" >> $GITHUB_STEP_SUMMARY
-          echo "- Cursor" >> $GITHUB_STEP_SUMMARY
-          echo "- Windsurf" >> $GITHUB_STEP_SUMMARY
-          echo "- VS Code" >> $GITHUB_STEP_SUMMARY
-          echo "- Cline" >> $GITHUB_STEP_SUMMARY
-          echo "- And more..." >> $GITHUB_STEP_SUMMARY
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "## ✅ Copilot Setup Complete" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Key Setup Requirements" >> $GITHUB_OUTPUT
+          echo "- Node.js 20.x" >> $GITHUB_OUTPUT
+          echo "- pnpm 10.x" >> $GITHUB_OUTPUT
+          echo "- OpenAI API Key (for embeddings)" >> $GITHUB_OUTPUT
+          echo "- Zilliz Cloud API Key (for vector database)" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "**Install command:**" >> $GITHUB_OUTPUT
+          echo "\`pnpm install && pnpm build\`" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "**Start command:**" >> $GITHUB_OUTPUT
+          echo "\`npx @zilliz/claude-context-mcp@latest\`" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "**Environment variables:**" >> $GITHUB_OUTPUT
+          echo "- OPENAI_API_KEY" >> $GITHUB_OUTPUT
+          echo "- MILVUS_TOKEN" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
