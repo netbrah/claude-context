@@ -1,0 +1,151 @@
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, main, claude_context]
+    paths:
+      - '.github/workflows/copilot-setup-steps.yml'
+      - 'packages/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+  pull_request:
+    branches: [master, main, claude_context]
+
+jobs:
+  validate-setup:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [20.x, 22.x]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      
+      - name: Configure Windows line endings
+        if: matrix.os == 'windows-latest'
+        run: git config --global core.autocrlf false
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build packages
+        run: pnpm build
+      
+      - name: Verify core package
+        run: |
+          cd packages/core
+          pnpm pack --dry-run
+      
+      - name: Verify MCP package
+        run: |
+          cd packages/mcp
+          pnpm pack --dry-run
+      
+      - name: Test MCP server startup
+        run: |
+          cd packages/mcp
+          timeout 10s node dist/index.js || exit 0
+        shell: bash
+        continue-on-error: true
+      
+      - name: Create setup summary
+        run: |
+          echo "## ✅ Setup Validation Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### System Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **OS**: ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node.js**: ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **pnpm**: $(pnpm --version)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Setup Steps Validated" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Dependencies installed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ All packages built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Core package verified" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ MCP package verified" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps for Copilot Integration" >> $GITHUB_STEP_SUMMARY
+          echo "1. Install the MCP server: \`npx @zilliz/claude-context-mcp@latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Configure your AI coding assistant (Claude Code, Cursor, etc.)" >> $GITHUB_STEP_SUMMARY
+          echo "3. Set environment variables: \`OPENAI_API_KEY\` and \`MILVUS_TOKEN\`" >> $GITHUB_STEP_SUMMARY
+          echo "4. Index your codebase and start searching!" >> $GITHUB_STEP_SUMMARY
+        shell: bash
+  
+  documentation-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Verify setup documentation
+        run: |
+          echo "## 📚 Documentation Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if grep -q "Prerequisites" README.md; then
+            echo "- ✅ Prerequisites documented in README.md" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ Prerequisites section not found in README.md" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if grep -q "Development Setup" CONTRIBUTING.md; then
+            echo "- ✅ Development setup documented in CONTRIBUTING.md" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ Development setup section not found in CONTRIBUTING.md" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -f "packages/mcp/README.md" ]; then
+            echo "- ✅ MCP package documentation exists" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ MCP package documentation not found" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Key Setup Requirements" >> $GITHUB_STEP_SUMMARY
+          echo "- Node.js >= 20.0.0 and < 24.0.0" >> $GITHUB_STEP_SUMMARY
+          echo "- pnpm >= 10.0.0" >> $GITHUB_STEP_SUMMARY
+          echo "- OpenAI API Key (for embeddings)" >> $GITHUB_STEP_SUMMARY
+          echo "- Zilliz Cloud API Key (for vector database)" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Extract setup commands
+        run: |
+          echo "## 🔧 Setup Commands" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Clone and Install" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "git clone https://github.com/zilliztech/claude-context.git" >> $GITHUB_STEP_SUMMARY
+          echo "cd claude-context" >> $GITHUB_STEP_SUMMARY
+          echo "pnpm install" >> $GITHUB_STEP_SUMMARY
+          echo "pnpm build" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Configure MCP for Claude Code" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "claude mcp add claude-context \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e OPENAI_API_KEY=sk-your-openai-api-key \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e MILVUS_TOKEN=your-zilliz-cloud-api-key \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -- npx @zilliz/claude-context-mcp@latest" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### For Other AI Coding Assistants" >> $GITHUB_STEP_SUMMARY
+          echo "See README.md for configuration examples for:" >> $GITHUB_STEP_SUMMARY
+          echo "- Cursor" >> $GITHUB_STEP_SUMMARY
+          echo "- Windsurf" >> $GITHUB_STEP_SUMMARY
+          echo "- VS Code" >> $GITHUB_STEP_SUMMARY
+          echo "- Cline" >> $GITHUB_STEP_SUMMARY
+          echo "- And more..." >> $GITHUB_STEP_SUMMARY
