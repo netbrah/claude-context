@@ -188,5 +188,42 @@
         "description": "Build Chrome extension"
       }
     ]
+  },
+  {
+    "timestamp": "2025-10-27T22:06:26.568Z",
+    "platform": "linux",
+    "nodeVersion": "v20.19.5",
+    "results": [
+      {
+        "success": true,
+        "duration": 1046,
+        "command": "pnpm clean",
+        "description": "Clean all packages"
+      },
+      {
+        "success": true,
+        "duration": 4008,
+        "command": "pnpm build:core",
+        "description": "Build core package"
+      },
+      {
+        "success": true,
+        "duration": 4955,
+        "command": "pnpm build:mcp",
+        "description": "Build MCP package"
+      },
+      {
+        "success": true,
+        "duration": 4574,
+        "command": "pnpm build:vscode",
+        "description": "Build VSCode extension"
+      },
+      {
+        "success": true,
+        "duration": 1169,
+        "command": "pnpm -r --filter=\"./packages/chrome-extension\" build",
+        "description": "Build Chrome extension"
+      }
+    ]
   }
 ]
