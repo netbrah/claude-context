@@ -85,3 +85,6 @@ repos
 
 evaluation/retrieval_results*
 .venv/
+
+# Package tarballs
+*.tgz

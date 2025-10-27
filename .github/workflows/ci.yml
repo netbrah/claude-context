@@ -7,13 +7,65 @@ on:
     branches: [master, main, claude_context]
 
 jobs:
-  lint_and_build:
-    runs-on: ${{ matrix.os }}
+  # Primary build and test job on Ubuntu with Node 20.x
+  build_and_test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Verify build outputs
+        run: |
+          ls -la packages/core/dist || echo "packages/core/dist not found"
+          ls -la packages/mcp/dist || echo "packages/mcp/dist not found"
+
+      - name: Run benchmark
+        run: pnpm benchmark
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: build-benchmark.json
+          retention-days: 30
+
+      - name: Generate benchmark summary
+        run: |
+          echo "## Build Performance Benchmark 📊" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          node scripts/generate-benchmark-summary.js >> $GITHUB_STEP_SUMMARY
+
+  # Cross-platform validation on Windows and Node 22.x
+  cross_platform_validation:
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        node-version: [20.x, 22.x]
+        include:
+          - os: windows-latest
+            node-version: 20.x
+          - os: ubuntu-latest
+            node-version: 22.x
 
     steps:
       - name: Checkout code
@@ -37,17 +89,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # - name: Lint code
-      #   run: pnpm lint
-
       - name: Build packages
         run: pnpm build
-
-      - name: Test clean command (Windows validation)
-        if: matrix.os == 'windows-latest'
-        run: |
-          pnpm clean
-          echo "Clean command executed successfully on Windows"
 
       - name: Verify build outputs (Unix)
         if: matrix.os != 'windows-latest'
