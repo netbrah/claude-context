@@ -1,5 +1,6 @@
 import Parser from 'tree-sitter';
 import { Splitter, CodeChunk } from './index';
+import { CppSymbolExtractor } from './cpp-symbol-extractor';
 
 // Language parsers
 const JavaScript = require('tree-sitter-javascript');
@@ -41,11 +42,13 @@ export class AstCodeSplitter implements Splitter {
     private chunkOverlap: number = 300;
     private parser: Parser;
     private langchainFallback: any; // LangChainCodeSplitter for fallback
+    private cppSymbolExtractor: CppSymbolExtractor;
 
     constructor(chunkSize?: number, chunkOverlap?: number) {
         if (chunkSize) this.chunkSize = chunkSize;
         if (chunkOverlap) this.chunkOverlap = chunkOverlap;
         this.parser = new Parser();
+        this.cppSymbolExtractor = new CppSymbolExtractor();
 
         // Initialize fallback splitter
         const { LangChainCodeSplitter } = require('./langchain-splitter');
@@ -63,10 +66,16 @@ export class AstCodeSplitter implements Splitter {
         try {
             console.log(`🌳 Using AST splitter for ${language} file: ${filePath || 'unknown'}`);
 
+            // Validate parser is available
+            if (!langConfig.parser) {
+                console.warn(`[ASTSplitter] ⚠️  Parser for ${language} not available, falling back to LangChain: ${filePath || 'unknown'}`);
+                return await this.langchainFallback.split(code, language, filePath);
+            }
+
             this.parser.setLanguage(langConfig.parser);
             const tree = this.parser.parse(code);
 
-            if (!tree.rootNode) {
+            if (!tree || !tree.rootNode) {
                 console.warn(`[ASTSplitter] ⚠️  Failed to parse AST for ${language}, falling back to LangChain: ${filePath || 'unknown'}`);
                 return await this.langchainFallback.split(code, language, filePath);
             }
@@ -104,6 +113,7 @@ export class AstCodeSplitter implements Splitter {
             'py': { parser: Python, nodeTypes: SPLITTABLE_NODE_TYPES.python },
             'java': { parser: Java, nodeTypes: SPLITTABLE_NODE_TYPES.java },
             'cpp': { parser: Cpp, nodeTypes: SPLITTABLE_NODE_TYPES.cpp },
+            'cc': { parser: Cpp, nodeTypes: SPLITTABLE_NODE_TYPES.cpp },
             'c++': { parser: Cpp, nodeTypes: SPLITTABLE_NODE_TYPES.cpp },
             'c': { parser: Cpp, nodeTypes: SPLITTABLE_NODE_TYPES.cpp },
             'go': { parser: Go, nodeTypes: SPLITTABLE_NODE_TYPES.go },
@@ -130,6 +140,9 @@ export class AstCodeSplitter implements Splitter {
         const chunks: CodeChunk[] = [];
         const codeLines = code.split('\n');
 
+        // Check if this is a C++ file to enable symbol extraction
+        const isCpp = ['cpp', 'c++', 'c', 'cc'].includes(language.toLowerCase());
+
         const traverse = (currentNode: Parser.SyntaxNode) => {
             // Check if this node type should be split into a chunk
             if (splittableTypes.includes(currentNode.type)) {
@@ -138,8 +151,8 @@ export class AstCodeSplitter implements Splitter {
                 const nodeText = code.slice(currentNode.startIndex, currentNode.endIndex);
 
                 // Only create chunk if it has meaningful content
-                if (nodeText.trim().length > 0) {
-                    chunks.push({
+                if (nodeText && nodeText.trim && nodeText.trim().length > 0) {
+                    const chunk: CodeChunk = {
                         content: nodeText,
                         metadata: {
                             startLine,
@@ -147,7 +160,39 @@ export class AstCodeSplitter implements Splitter {
                             language,
                             filePath,
                         }
-                    });
+                    };
+
+                    // Extract symbol metadata for C++ files
+                    if (isCpp) {
+                        try {
+                            const symbols = this.cppSymbolExtractor.extractChunkSymbols(currentNode, nodeText);
+                            if (symbols.length > 0) {
+                                chunk.metadata.symbols = symbols.map(s => ({
+                                    name: s.name,
+                                    kind: s.kind,
+                                    range: s.range,
+                                    definition: s.definition,
+                                    usages: s.usages,
+                                    documentation: s.documentation,
+                                    // LSP-like metadata for semantic search
+                                    signature: s.signature,
+                                    returnType: s.returnType,
+                                    parameters: s.parameters,
+                                    parentSymbol: s.parentSymbol,
+                                    scope: s.scope,
+                                    isStatic: s.isStatic,
+                                    isVirtual: s.isVirtual,
+                                    isConst: s.isConst,
+                                    baseClasses: s.baseClasses
+                                }));
+                            }
+                        } catch (error) {
+                            // Symbol extraction failed, continue without symbols
+                            console.warn(`Symbol extraction failed for chunk: ${error}`);
+                        }
+                    }
+
+                    chunks.push(chunk);
                 }
             }
 
@@ -161,7 +206,7 @@ export class AstCodeSplitter implements Splitter {
 
         // If no meaningful chunks found, create a single chunk with the entire code
         if (chunks.length === 0) {
-            chunks.push({
+            const chunk: CodeChunk = {
                 content: code,
                 metadata: {
                     startLine: 1,
@@ -169,7 +214,39 @@ export class AstCodeSplitter implements Splitter {
                     language,
                     filePath,
                 }
-            });
+            };
+
+            // Extract symbols for the entire file if C++
+            if (isCpp) {
+                try {
+                    const symbols = this.cppSymbolExtractor.extractSymbols(node, code);
+                    if (symbols.length > 0) {
+                        chunk.metadata.symbols = symbols.map(s => ({
+                            name: s.name,
+                            kind: s.kind,
+                            range: s.range,
+                            definition: s.definition,
+                            usages: s.usages,
+                            documentation: s.documentation,
+                            // LSP-like metadata for semantic search
+                            signature: s.signature,
+                            returnType: s.returnType,
+                            parameters: s.parameters,
+                            parentSymbol: s.parentSymbol,
+                            scope: s.scope,
+                            isStatic: s.isStatic,
+                            isVirtual: s.isVirtual,
+                            isConst: s.isConst,
+                            baseClasses: s.baseClasses
+                        }));
+                    }
+                } catch (error) {
+                    // Symbol extraction failed, continue without symbols
+                    console.warn(`Symbol extraction failed for file: ${error}`);
+                }
+            }
+
+            chunks.push(chunk);
         }
 
         return chunks;
