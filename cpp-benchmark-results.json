@@ -582,5 +582,78 @@
       "averageLinesPerFile": 181,
       "averageSizeKB": "4.29"
     }
+  },
+  {
+    "timestamp": "2025-10-27T21:55:20.569Z",
+    "platform": "linux",
+    "nodeVersion": "v20.19.5",
+    "totalFiles": 8,
+    "files": [
+      {
+        "path": "algorithms/dynamic_programming.cpp",
+        "lines": 196,
+        "sizeKB": 4.84,
+        "parseTimeMs": 19.917941022659946,
+        "linesPerSecond": 9840
+      },
+      {
+        "path": "algorithms/graph.cpp",
+        "lines": 211,
+        "sizeKB": 5.56,
+        "parseTimeMs": 21.249889705148373,
+        "linesPerSecond": 9929
+      },
+      {
+        "path": "algorithms/sorting.cpp",
+        "lines": 157,
+        "sizeKB": 3.35,
+        "parseTimeMs": 15.982846187435477,
+        "linesPerSecond": 9823
+      },
+      {
+        "path": "complex.cpp",
+        "lines": 144,
+        "sizeKB": 2.87,
+        "parseTimeMs": 14.124928384752783,
+        "linesPerSecond": 10195
+      },
+      {
+        "path": "data-structures/advanced.cpp",
+        "lines": 333,
+        "sizeKB": 8.68,
+        "parseTimeMs": 33.08005741542076,
+        "linesPerSecond": 10066
+      },
+      {
+        "path": "modern-cpp/features.cpp",
+        "lines": 324,
+        "sizeKB": 7.51,
+        "parseTimeMs": 32.434769495614546,
+        "linesPerSecond": 9989
+      },
+      {
+        "path": "sample.cpp",
+        "lines": 78,
+        "sizeKB": 1.46,
+        "parseTimeMs": 7.954643283570363,
+        "linesPerSecond": 9806
+      },
+      {
+        "path": "simple.cpp",
+        "lines": 5,
+        "sizeKB": 0.06,
+        "parseTimeMs": 0.5003213193699865,
+        "linesPerSecond": 9994
+      }
+    ],
+    "summary": {
+      "totalLines": 1448,
+      "totalSizeKB": "34.33",
+      "totalParseTimeMs": "145.25",
+      "averageParseTimeMs": "18.16",
+      "overallLinesPerSecond": 9969,
+      "averageLinesPerFile": 181,
+      "averageSizeKB": "4.29"
+    }
   }
 ]
