@@ -1,8 +1,6 @@
 import { CppSymbolExtractor, SymbolKind } from '../cpp-symbol-extractor';
 import Parser from 'tree-sitter';
 
-const Cpp = require('tree-sitter-cpp');
-
 describe('CppSymbolExtractor', () => {
     let extractor: CppSymbolExtractor;
     let parser: Parser;
@@ -10,6 +8,8 @@ describe('CppSymbolExtractor', () => {
     beforeEach(() => {
         extractor = new CppSymbolExtractor();
         parser = new Parser();
+        // Load the language fresh for each test to avoid race conditions
+        const Cpp = require('tree-sitter-cpp');
         parser.setLanguage(Cpp);
     });
 
@@ -377,6 +377,11 @@ int localFunc() {
 }
 `;
             const tree = parser.parse(code);
+            expect(tree).toBeDefined();
+            expect(tree.rootNode).toBeDefined();
+            expect(tree.rootNode.children).toBeDefined();
+            expect(tree.rootNode.children.length).toBeGreaterThan(0);
+            
             const chunkNode = tree.rootNode.children[0]; // First top-level node
             const symbols = extractor.extractChunkSymbols(chunkNode, code);
 
@@ -392,6 +397,11 @@ class TestClass {
 };
 `;
             const tree = parser.parse(code);
+            expect(tree).toBeDefined();
+            expect(tree.rootNode).toBeDefined();
+            expect(tree.rootNode.children).toBeDefined();
+            expect(tree.rootNode.children.length).toBeGreaterThan(0);
+            
             const classNode = tree.rootNode.children[0];
             const symbols = extractor.extractChunkSymbols(classNode, code);
 
