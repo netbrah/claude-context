@@ -19,6 +19,8 @@ jobs:
     name: Test Suite
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -79,6 +81,8 @@ jobs:
     name: Parser Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
