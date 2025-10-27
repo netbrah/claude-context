@@ -12,3 +12,12 @@ export interface SemanticSearchResult {
     language: string;
     score: number;
 }
+
+export interface ProgressInfo {
+    phase: string;
+    current: number;
+    total: number;
+    percentage: number;
+}
+
+export type ProgressCallback = (progress: ProgressInfo) => void;
