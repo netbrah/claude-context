@@ -100,6 +100,11 @@ export class CppSymbolExtractor {
         node: Parser.SyntaxNode,
         usages: Map<string, Array<{ line: number; column: number }>>
     ): void {
+        // Guard against invalid nodes
+        if (!node || !node.type) {
+            return;
+        }
+
         // Collect identifier nodes that represent usages
         if (node.type === 'identifier' && node.parent) {
             const parentType = node.parent.type;
@@ -147,6 +152,11 @@ export class CppSymbolExtractor {
         symbols: SymbolInfo[],
         usages: Map<string, Array<{ line: number; column: number }>>
     ): void {
+        // Guard against invalid nodes
+        if (!node || !node.type) {
+            return;
+        }
+
         let symbolName: string | null = null;
         let symbolKind: SymbolKind | null = null;
         let symbolNode: Parser.SyntaxNode | null = null;

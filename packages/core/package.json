@@ -12,7 +12,8 @@
         "lint:fix": "eslint src --ext .ts --fix",
         "typecheck": "tsc --noEmit",
         "test": "jest",
-        "test:watch": "jest --watch",
+        "test:serial": "jest --maxWorkers=1",
+        "test:watch": "jest --watch --maxWorkers=1",
         "test:coverage": "jest --coverage"
     },
     "dependencies": {

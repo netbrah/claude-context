@@ -17,6 +17,7 @@ build/
 # Test coverage
 coverage/
 *.lcov
+.jest-cache/
 
 # Benchmark results
 cpp-benchmark-results.json
