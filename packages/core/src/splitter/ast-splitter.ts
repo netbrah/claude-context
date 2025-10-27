@@ -14,18 +14,36 @@ const CSharp = require('tree-sitter-c-sharp');
 const Scala = require('tree-sitter-scala');
 const Perl = require('@ganezdragon/tree-sitter-perl');
 
-// Validate critical parsers are loaded
+// Validate parsers are loaded
+if (!JavaScript) {
+    throw new Error('tree-sitter-javascript parser failed to load. Please ensure tree-sitter-javascript is properly installed.');
+}
+if (!TypeScript) {
+    throw new Error('tree-sitter-typescript parser failed to load. Please ensure tree-sitter-typescript is properly installed.');
+}
+if (!Python) {
+    throw new Error('tree-sitter-python parser failed to load. Please ensure tree-sitter-python is properly installed.');
+}
+if (!Java) {
+    throw new Error('tree-sitter-java parser failed to load. Please ensure tree-sitter-java is properly installed.');
+}
 if (!Cpp) {
     throw new Error('tree-sitter-cpp parser failed to load. Please ensure tree-sitter-cpp is properly installed.');
 }
-if (!JavaScript) {
-    throw new Error('tree-sitter-javascript parser failed to load.');
+if (!Go) {
+    throw new Error('tree-sitter-go parser failed to load. Please ensure tree-sitter-go is properly installed.');
 }
-if (!TypeScript) {
-    throw new Error('tree-sitter-typescript parser failed to load.');
+if (!Rust) {
+    throw new Error('tree-sitter-rust parser failed to load. Please ensure tree-sitter-rust is properly installed.');
 }
-if (!Python) {
-    throw new Error('tree-sitter-python parser failed to load.');
+if (!CSharp) {
+    throw new Error('tree-sitter-c-sharp parser failed to load. Please ensure tree-sitter-c-sharp is properly installed.');
+}
+if (!Scala) {
+    throw new Error('tree-sitter-scala parser failed to load. Please ensure tree-sitter-scala is properly installed.');
+}
+if (!Perl) {
+    throw new Error('@ganezdragon/tree-sitter-perl parser failed to load. Please ensure @ganezdragon/tree-sitter-perl is properly installed.');
 }
 
 // Node types that represent logical code units
