@@ -53,10 +53,18 @@ test_pass
 # Test 4: Run core tests (test.yml)
 test_step "Run core tests"
 cd packages/core
-pnpm test > /tmp/test-output.txt 2>&1 || echo "Some tests failed (known issues) - continuing"
-PASSED=$(grep -c "PASS" /tmp/test-output.txt || echo "0")
-FAILED=$(grep -c "FAIL" /tmp/test-output.txt || echo "0")
-echo "Tests: $PASSED passed, $FAILED failed test suites"
+if pnpm test > /tmp/test-output.txt 2>&1; then
+    echo "All tests passed!"
+else
+    # Check if tests ran but some failed
+    if grep -q "Test Suites:" /tmp/test-output.txt; then
+        echo "Some tests failed (known issues) - continuing"
+        grep "Test Suites:" /tmp/test-output.txt || true
+        grep "Tests:" /tmp/test-output.txt || true
+    else
+        test_fail "Core tests failed to run"
+    fi
+fi
 cd ../..
 test_pass
 
