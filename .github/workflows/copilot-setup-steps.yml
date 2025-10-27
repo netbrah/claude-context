@@ -16,6 +16,9 @@ jobs:
   validate-setup:
     runs-on: ${{ matrix.os }}
     
+    permissions:
+      contents: read
+    
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -96,6 +99,9 @@ jobs:
   
   documentation-check:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout repository
