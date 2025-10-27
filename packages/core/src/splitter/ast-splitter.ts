@@ -66,10 +66,16 @@ export class AstCodeSplitter implements Splitter {
         try {
             console.log(`🌳 Using AST splitter for ${language} file: ${filePath || 'unknown'}`);
 
+            // Validate parser is available
+            if (!langConfig.parser) {
+                console.warn(`[ASTSplitter] ⚠️  Parser for ${language} not available, falling back to LangChain: ${filePath || 'unknown'}`);
+                return await this.langchainFallback.split(code, language, filePath);
+            }
+
             this.parser.setLanguage(langConfig.parser);
             const tree = this.parser.parse(code);
 
-            if (!tree.rootNode) {
+            if (!tree || !tree.rootNode) {
                 console.warn(`[ASTSplitter] ⚠️  Failed to parse AST for ${language}, falling back to LangChain: ${filePath || 'unknown'}`);
                 return await this.langchainFallback.split(code, language, filePath);
             }
