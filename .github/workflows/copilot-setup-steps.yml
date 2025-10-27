@@ -1,88 +1,37 @@
 name: Copilot Setup Steps
 
 on:
-  workflow_dispatch:
   push:
-    branches: [master, main, claude_context]
-    paths:
-      - '.github/workflows/copilot-setup-steps.yml'
-      - 'packages/**'
-      - 'README.md'
-      - 'CONTRIBUTING.md'
+    branches: [main]
   pull_request:
-    branches: [master, main, claude_context]
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
-  copilot-setup:
-    name: Copilot Setup
+  copilot-setup-steps:
     runs-on: ubuntu-latest
-    outputs:
-      summary: ${{ steps.copilot-summary.outputs.summary }}
-      environment_variables: ${{ steps.env-vars.outputs.environment_variables }}
-      install_command: ${{ steps.install-cmd.outputs.install_command }}
-      start_command: ${{ steps.start-cmd.outputs.start_command }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get pnpm version
-        id: get-pnpm
-        run: echo "version=$(pnpm --version 2>/dev/null || echo 'not installed')" >> $GITHUB_OUTPUT
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js 20.x
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
-          cache: 'pnpm'
+          node-version: 20
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
-      - name: Build packages
-        run: pnpm build
-
-      - name: Copilot environment variables
-        id: env-vars
-        run: |
-          echo "environment_variables<<EOF" >> $GITHUB_OUTPUT
-          echo "OPENAI_API_KEY=<your-openai-api-key>" >> $GITHUB_OUTPUT
-          echo "MILVUS_TOKEN=<your-zilliz-cloud-api-key>" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Copilot install command
-        id: install-cmd
-        run: |
-          echo "install_command=pnpm install && pnpm build" >> $GITHUB_OUTPUT
-
-      - name: Copilot start command
-        id: start-cmd
-        run: |
-          echo "start_command=npx @zilliz/claude-context-mcp@latest" >> $GITHUB_OUTPUT
-
-      - name: Copilot setup summary
-        id: copilot-summary
-        run: |
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
-          echo "## ✅ Copilot Setup Complete" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "### Key Setup Requirements" >> $GITHUB_OUTPUT
-          echo "- Node.js 20.x" >> $GITHUB_OUTPUT
-          echo "- pnpm 10.x" >> $GITHUB_OUTPUT
-          echo "- OpenAI API Key (for embeddings)" >> $GITHUB_OUTPUT
-          echo "- Zilliz Cloud API Key (for vector database)" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "**Install command:**" >> $GITHUB_OUTPUT
-          echo "\`pnpm install && pnpm build\`" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "**Start command:**" >> $GITHUB_OUTPUT
-          echo "\`npx @zilliz/claude-context-mcp@latest\`" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "**Environment variables:**" >> $GITHUB_OUTPUT
-          echo "- OPENAI_API_KEY" >> $GITHUB_OUTPUT
-          echo "- MILVUS_TOKEN" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Verify Copilot Environment
+        run: npx --yes @githubnext/github-copilot-cli@latest verify-setup
