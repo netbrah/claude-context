@@ -6,6 +6,38 @@ export interface CodeChunk {
         endLine: number;
         language?: string;
         filePath?: string;
+        symbols?: Array<{
+            name: string;
+            kind: string;
+            range: {
+                startLine: number;
+                endLine: number;
+                startColumn: number;
+                endColumn: number;
+            };
+            definition?: {
+                line: number;
+                column: number;
+            };
+            usages?: Array<{
+                line: number;
+                column: number;
+            }>;
+            documentation?: string;
+            // LSP-like enhancements for semantic search
+            signature?: string;
+            returnType?: string;
+            parameters?: Array<{
+                name: string;
+                type: string;
+            }>;
+            parentSymbol?: string;
+            scope?: 'public' | 'private' | 'protected';
+            isStatic?: boolean;
+            isVirtual?: boolean;
+            isConst?: boolean;
+            baseClasses?: string[];
+        }>;
     };
 }
 
@@ -48,3 +80,4 @@ export interface Splitter {
 // Implementation class exports
 export * from './langchain-splitter';
 export * from './ast-splitter';
+export * from './cpp-symbol-extractor';

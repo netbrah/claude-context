@@ -27,9 +27,9 @@ const DEFAULT_SUPPORTED_EXTENSIONS = [
     // Programming languages
     '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cpp', '.c', '.h', '.hpp',
     '.cs', '.go', '.rs', '.php', '.rb', '.swift', '.kt', '.scala', '.m', '.mm',
-    '.cc', '.ut',
+    '.cc', '.ut', '.pl', '.pm', '.thpl',
     // Text and markup files
-    '.md', '.markdown', '.ipynb',
+    '.md', '.markdown', '.ipynb', '.smf',
     // '.txt',  '.json', '.yaml', '.yml', '.xml', '.html', '.htm',
     // '.css', '.scss', '.less', '.sql', '.sh', '.bash', '.env'
 ];
@@ -47,6 +47,8 @@ const DEFAULT_IGNORE_PATTERNS = [
     // IDE and editor files
     '.vscode/**',
     '.idea/**',
+    '**/.history/**',
+    '**/.lh/**',
     '*.swp',
     '*.swo',
 
@@ -906,7 +908,11 @@ export class Context {
             '.scala': 'scala',
             '.m': 'objective-c',
             '.mm': 'objective-c',
-            '.ipynb': 'jupyter'
+            '.ipynb': 'jupyter',
+            '.pl': 'perl',
+            '.pm': 'perl',
+            '.thpl': 'perl',
+            '.smf': 'smf'
         };
         return languageMap[ext] || 'text';
     }

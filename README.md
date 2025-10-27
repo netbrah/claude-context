@@ -699,6 +699,41 @@ Check the `/examples` directory for complete usage examples:
 
 ---
 
+## 🧪 Development & Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run core package tests
+pnpm test:core
+
+# Run with coverage
+cd packages/core && pnpm test:coverage
+```
+
+### Running Benchmarks
+
+```bash
+# Run C++ parser benchmark
+pnpm run benchmark:cpp
+
+# Run build performance benchmark
+pnpm run benchmark
+```
+
+### Quick Test Script
+
+```bash
+./run-parser-tests.sh
+```
+
+For detailed information about testing, benchmarking, and interpreting results, see our [C++ Testing and Benchmarking Guide](docs/cpp-testing-and-benchmarking.md).
+
+---
+
 ## ❓ FAQ
 
 **Common Questions:**

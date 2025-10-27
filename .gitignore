@@ -14,6 +14,17 @@ dist/
 build/
 *.tsbuildinfo
 
+# Test coverage
+coverage/
+*.lcov
+
+# Benchmark results
+cpp-benchmark-results.json
+
+# Packaged archives (except pre-built ones in root)
+packages/**/*.tgz
+zilliz-claude-context-*.tgz
+
 # Environment variables
 .env
 .env.local
