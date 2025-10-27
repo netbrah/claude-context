@@ -39,7 +39,7 @@ jobs:
       - name: Run all tests with coverage (serial mode for reliability)
         run: |
           cd packages/core
-          pnpm test:coverage -- --maxWorkers=1
+          npx jest --coverage --maxWorkers=1
       
       - name: Upload test coverage
         uses: actions/upload-artifact@v4
