@@ -31,11 +31,17 @@ The tests in `cpp-symbol-extractor.test.ts` may exhibit intermittent failures wh
 - Tests may fail intermittently with errors like `Cannot read properties of undefined (reading 'type')`
 - Failure count varies between test runs (typically 15-17 failures)
 
-**Workaround:**
+**Current Workaround:**
 Use `pnpm test:serial` to run tests sequentially, which eliminates the race condition.
 
+**Potential Future Solutions:**
+- Implement proper parser instance cleanup in beforeEach/afterEach hooks
+- Create parser instance pooling to manage shared resources
+- Isolate tree-sitter parser instances per test worker
+- Investigate using Jest's `--workerIdleMemoryLimit` to force worker restarts
+
 **Root Cause:**
-Tree-sitter language parsers are loaded at module level and Parser instances can have state conflicts when multiple tests create and use parsers concurrently.
+Tree-sitter language parsers are loaded at module level in `ast-splitter.ts`. When multiple tests create and use parsers concurrently, the shared language objects can have state conflicts.
 
 ## Test Structure
 
