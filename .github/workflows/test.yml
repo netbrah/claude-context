@@ -47,12 +47,12 @@ jobs:
         run: |
           cd packages/core
           pnpm test -- --testPathPattern="cpp-parser|cpp-fixtures|smf-parser|perl-parser" --coverage
-      
+
       - name: Run cpp-symbol-extractor tests separately  
         run: |
           cd packages/core
           pnpm test -- cpp-symbol-extractor
-      
+
       - name: Run flaky cpp-symbol-metadata test separately
         run: |
           cd packages/core
