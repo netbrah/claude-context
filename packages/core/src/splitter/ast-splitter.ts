@@ -167,7 +167,17 @@ export class AstCodeSplitter implements Splitter {
                                     range: s.range,
                                     definition: s.definition,
                                     usages: s.usages,
-                                    documentation: s.documentation
+                                    documentation: s.documentation,
+                                    // LSP-like metadata for semantic search
+                                    signature: s.signature,
+                                    returnType: s.returnType,
+                                    parameters: s.parameters,
+                                    parentSymbol: s.parentSymbol,
+                                    scope: s.scope,
+                                    isStatic: s.isStatic,
+                                    isVirtual: s.isVirtual,
+                                    isConst: s.isConst,
+                                    baseClasses: s.baseClasses
                                 }));
                             }
                         } catch (error) {
@@ -211,7 +221,17 @@ export class AstCodeSplitter implements Splitter {
                             range: s.range,
                             definition: s.definition,
                             usages: s.usages,
-                            documentation: s.documentation
+                            documentation: s.documentation,
+                            // LSP-like metadata for semantic search
+                            signature: s.signature,
+                            returnType: s.returnType,
+                            parameters: s.parameters,
+                            parentSymbol: s.parentSymbol,
+                            scope: s.scope,
+                            isStatic: s.isStatic,
+                            isVirtual: s.isVirtual,
+                            isConst: s.isConst,
+                            baseClasses: s.baseClasses
                         }));
                     }
                 } catch (error) {

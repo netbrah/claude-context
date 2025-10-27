@@ -24,6 +24,19 @@ export interface CodeChunk {
                 column: number;
             }>;
             documentation?: string;
+            // LSP-like enhancements for semantic search
+            signature?: string;
+            returnType?: string;
+            parameters?: Array<{
+                name: string;
+                type: string;
+            }>;
+            parentSymbol?: string;
+            scope?: 'public' | 'private' | 'protected';
+            isStatic?: boolean;
+            isVirtual?: boolean;
+            isConst?: boolean;
+            baseClasses?: string[];
         }>;
     };
 }
