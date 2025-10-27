@@ -104,13 +104,19 @@ export class AstCodeSplitter implements Splitter {
                 return await this.langchainFallback.split(code, language, filePath);
             }
 
+            // Detailed diagnostic logging for parser setup
+            console.log(`[ASTSplitter] Parser available for ${language}, code length: ${code.length}, file: ${filePath || 'unknown'}`);
+            
             this.parser.setLanguage(langConfig.parser);
             const tree = this.parser.parse(code);
 
+            // Enhanced diagnostic logging for parsing results
             if (!tree || !tree.rootNode) {
-                console.warn(`[ASTSplitter] ⚠️  Failed to parse AST for ${language}, falling back to LangChain: ${filePath || 'unknown'}`);
+                console.warn(`[ASTSplitter] ⚠️  Failed to parse AST for ${language}, parser: ${!!langConfig.parser}, tree: ${!!tree}, rootNode: ${!!(tree?.rootNode)}, code length: ${code.length}, file: ${filePath || 'unknown'}`);
                 return await this.langchainFallback.split(code, language, filePath);
             }
+            
+            console.log(`[ASTSplitter] Successfully parsed AST for ${language}, rootNode type: ${tree.rootNode.type}, children: ${tree.rootNode.childCount}, file: ${filePath || 'unknown'}`);
 
             // Extract chunks based on AST nodes
             const chunks = this.extractChunks(tree.rootNode, code, langConfig.nodeTypes, language, filePath);
