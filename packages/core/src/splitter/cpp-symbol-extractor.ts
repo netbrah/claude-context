@@ -65,32 +65,54 @@ export class CppSymbolExtractor {
      * Extract all symbols from a C++ AST
      */
     public extractSymbols(root: Parser.SyntaxNode, code: string): SymbolInfo[] {
-        const symbols: SymbolInfo[] = [];
-        const symbolUsages = new Map<string, Array<{ line: number; column: number }>>();
+        try {
+            // Validate inputs (allow empty string, but not null/undefined)
+            if (!root || code === null || code === undefined) {
+                console.warn('[CppSymbolExtractor] Invalid input to extractSymbols');
+                return [];
+            }
 
-        // First pass: collect all identifier usages
-        this.collectIdentifierUsages(root, symbolUsages);
+            const symbols: SymbolInfo[] = [];
+            const symbolUsages = new Map<string, Array<{ line: number; column: number }>>();
 
-        // Second pass: extract symbol definitions
-        this.extractSymbolDefinitions(root, code, symbols, symbolUsages);
+            // First pass: collect all identifier usages
+            this.collectIdentifierUsages(root, symbolUsages);
 
-        return symbols;
+            // Second pass: extract symbol definitions
+            this.extractSymbolDefinitions(root, code, symbols, symbolUsages);
+
+            return symbols;
+        } catch (error) {
+            console.error('[CppSymbolExtractor] Symbol extraction failed:', error);
+            return []; // Graceful failure
+        }
     }
 
     /**
      * Extract symbols from a specific chunk's AST node
      */
     public extractChunkSymbols(node: Parser.SyntaxNode, code: string): SymbolInfo[] {
-        const symbols: SymbolInfo[] = [];
-        const symbolUsages = new Map<string, Array<{ line: number; column: number }>>();
+        try {
+            // Validate inputs (allow empty string, but not null/undefined)
+            if (!node || code === null || code === undefined) {
+                console.warn('[CppSymbolExtractor] Invalid input to extractChunkSymbols');
+                return [];
+            }
 
-        // Collect usages within this chunk
-        this.collectIdentifierUsages(node, symbolUsages);
+            const symbols: SymbolInfo[] = [];
+            const symbolUsages = new Map<string, Array<{ line: number; column: number }>>();
 
-        // Extract definitions within this chunk
-        this.extractSymbolDefinitions(node, code, symbols, symbolUsages);
+            // Collect usages within this chunk
+            this.collectIdentifierUsages(node, symbolUsages);
 
-        return symbols;
+            // Extract definitions within this chunk
+            this.extractSymbolDefinitions(node, code, symbols, symbolUsages);
+
+            return symbols;
+        } catch (error) {
+            console.error('[CppSymbolExtractor] Chunk symbol extraction failed:', error);
+            return []; // Graceful failure
+        }
     }
 
     /**
@@ -100,25 +122,39 @@ export class CppSymbolExtractor {
         node: Parser.SyntaxNode,
         usages: Map<string, Array<{ line: number; column: number }>>
     ): void {
-        // Collect identifier nodes that represent usages
-        if (node.type === 'identifier' && node.parent) {
-            const parentType = node.parent.type;
-            // Skip identifiers that are part of declarations
-            if (!this.isDeclarationContext(parentType)) {
-                const name = node.text;
-                if (!usages.has(name)) {
-                    usages.set(name, []);
-                }
-                usages.get(name)!.push({
-                    line: node.startPosition.row + 1,
-                    column: node.startPosition.column
-                });
-            }
+        // Validate node
+        if (!node || !node.type) {
+            return;
         }
 
-        // Recursively process children
-        for (const child of node.children) {
-            this.collectIdentifierUsages(child, usages);
+        try {
+            // Collect identifier nodes that represent usages
+            if (node.type === 'identifier' && node.parent) {
+                const parentType = node.parent.type;
+                // Skip identifiers that are part of declarations
+                if (!this.isDeclarationContext(parentType)) {
+                    const name = node.text;
+                    if (!usages.has(name)) {
+                        usages.set(name, []);
+                    }
+                    usages.get(name)!.push({
+                        line: node.startPosition.row + 1,
+                        column: node.startPosition.column
+                    });
+                }
+            }
+
+            // Recursively process children
+            if (node.children && Array.isArray(node.children)) {
+                for (const child of node.children) {
+                    if (child) {
+                        this.collectIdentifierUsages(child, usages);
+                    }
+                }
+            }
+        } catch (error) {
+            // Log but don't throw - continue with remaining nodes
+            console.warn('[CppSymbolExtractor] Error collecting identifier usages:', error);
         }
     }
 
@@ -147,6 +183,11 @@ export class CppSymbolExtractor {
         symbols: SymbolInfo[],
         usages: Map<string, Array<{ line: number; column: number }>>
     ): void {
+        // Validate node
+        if (!node || !node.type) {
+            return;
+        }
+
         let symbolName: string | null = null;
         let symbolKind: SymbolKind | null = null;
         let symbolNode: Parser.SyntaxNode | null = null;
@@ -292,8 +333,12 @@ export class CppSymbolExtractor {
         }
 
         // Recursively process children
-        for (const child of node.children) {
-            this.extractSymbolDefinitions(child, code, symbols, usages);
+        if (node.children && Array.isArray(node.children)) {
+            for (const child of node.children) {
+                if (child) {
+                    this.extractSymbolDefinitions(child, code, symbols, usages);
+                }
+            }
         }
     }
 
@@ -301,17 +346,24 @@ export class CppSymbolExtractor {
      * Find a child node by type using breadth-first search
      */
     private findChildByType(node: Parser.SyntaxNode, type: string): Parser.SyntaxNode | null {
+        // Validate node
+        if (!node || !node.children || !Array.isArray(node.children)) {
+            return null;
+        }
+
         // First check direct children
         for (const child of node.children) {
-            if (child.type === type) {
+            if (child && child.type === type) {
                 return child;
             }
         }
         // Then check grandchildren (limited depth to avoid performance issues)
         for (const child of node.children) {
-            for (const grandchild of child.children) {
-                if (grandchild.type === type) {
-                    return grandchild;
+            if (child && child.children && Array.isArray(child.children)) {
+                for (const grandchild of child.children) {
+                    if (grandchild && grandchild.type === type) {
+                        return grandchild;
+                    }
                 }
             }
         }
