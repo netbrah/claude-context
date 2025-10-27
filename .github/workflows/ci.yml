@@ -50,20 +50,7 @@ jobs:
         run: |
           echo "## Build Performance Benchmark 📊" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Package | Duration (ms) | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|---------------|--------|" >> $GITHUB_STEP_SUMMARY
-          node -e "
-          const fs = require('fs');
-          const data = JSON.parse(fs.readFileSync('build-benchmark.json', 'utf8'));
-          const latest = data[data.length - 1];
-          latest.results.forEach(r => {
-            const status = r.success ? '✅' : '❌';
-            const duration = (r.duration / 1000).toFixed(2);
-            console.log(\`| \${r.description} | \${duration}s | \${status} |\`);
-          });
-          const total = (latest.results.reduce((sum, r) => sum + r.duration, 0) / 1000).toFixed(2);
-          console.log(\`| **Total** | **\${total}s** | - |\`);
-          " >> $GITHUB_STEP_SUMMARY
+          node scripts/generate-benchmark-summary.js >> $GITHUB_STEP_SUMMARY
 
   # Cross-platform validation on Windows and Node 22.x
   cross_platform_validation:
