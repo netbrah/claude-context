@@ -8,6 +8,9 @@ on:
 jobs:
   build_and_release_dev:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # For creating releases
+      packages: read   # For reading packages
     
     steps:
       - name: Checkout code

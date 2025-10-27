@@ -6,12 +6,17 @@
  */
 
 const fs = require('fs');
-const path = require('path');
 
 const BENCHMARK_FILE = process.argv[2] || 'build-benchmark.json';
 
 try {
   const data = JSON.parse(fs.readFileSync(BENCHMARK_FILE, 'utf8'));
+  
+  if (!Array.isArray(data) || data.length === 0) {
+    console.error('No benchmark data found');
+    process.exit(1);
+  }
+  
   const latest = data[data.length - 1];
   
   console.log('| Package | Duration | Status |');

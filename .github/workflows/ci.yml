@@ -10,6 +10,8 @@ jobs:
   # Primary build and test job on Ubuntu with Node 20.x
   build_and_test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -55,6 +57,8 @@ jobs:
   # Cross-platform validation on Windows and Node 22.x
   cross_platform_validation:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       matrix:
         include:
