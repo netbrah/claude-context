@@ -6,6 +6,25 @@ export interface CodeChunk {
         endLine: number;
         language?: string;
         filePath?: string;
+        symbols?: Array<{
+            name: string;
+            kind: string;
+            range: {
+                startLine: number;
+                endLine: number;
+                startColumn: number;
+                endColumn: number;
+            };
+            definition?: {
+                line: number;
+                column: number;
+            };
+            usages?: Array<{
+                line: number;
+                column: number;
+            }>;
+            documentation?: string;
+        }>;
     };
 }
 
