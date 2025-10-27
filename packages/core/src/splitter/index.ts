@@ -67,3 +67,4 @@ export interface Splitter {
 // Implementation class exports
 export * from './langchain-splitter';
 export * from './ast-splitter';
+export * from './cpp-symbol-extractor';

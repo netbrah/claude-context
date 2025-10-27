@@ -203,7 +203,6 @@ export class CppSymbolExtractor {
         }
         // Extract template declarations
         else if (node.type === 'template_declaration') {
-            symbolKind = SymbolKind.Template;
             // Look for the actual declaration inside the template
             for (const child of node.children) {
                 if (child.type === 'function_definition' || child.type === 'class_specifier') {
@@ -246,17 +245,21 @@ export class CppSymbolExtractor {
     }
 
     /**
-     * Find a child node by type
+     * Find a child node by type using breadth-first search
      */
     private findChildByType(node: Parser.SyntaxNode, type: string): Parser.SyntaxNode | null {
+        // First check direct children
         for (const child of node.children) {
             if (child.type === type) {
                 return child;
             }
-            // Recursively search in named children
-            const found = this.findChildByType(child, type);
-            if (found) {
-                return found;
+        }
+        // Then check grandchildren (limited depth to avoid performance issues)
+        for (const child of node.children) {
+            for (const grandchild of child.children) {
+                if (grandchild.type === type) {
+                    return grandchild;
+                }
             }
         }
         return null;
@@ -274,21 +277,25 @@ export class CppSymbolExtractor {
         let docLines: string[] = [];
         for (let i = startLine - 1; i >= 0 && i >= startLine - 5; i--) {
             const line = lines[i];
-            if (!line) {
-                continue; // Skip undefined lines
+            if (line === undefined) {
+                continue; // Skip undefined/out-of-bounds lines
             }
             const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('//')) {
-                docLines.unshift(trimmedLine.substring(2).trim());
-            } else if (trimmedLine.startsWith('/*') || trimmedLine.includes('*/')) {
-                // Multi-line comment
-                const commentMatch = trimmedLine.match(/\/\*(.*?)\*\//);
-                if (commentMatch) {
-                    docLines.unshift(commentMatch[1].trim());
-                }
-            } else if (trimmedLine === '') {
-                // Empty line, continue
+            if (trimmedLine === '') {
+                // Empty line, continue looking for comments
                 continue;
+            } else if (trimmedLine.startsWith('//')) {
+                docLines.unshift(trimmedLine.substring(2).trim());
+            } else if (trimmedLine.startsWith('/*') && trimmedLine.includes('*/')) {
+                // Single-line multi-line comment (/* comment */)
+                const startIdx = trimmedLine.indexOf('/*') + 2;
+                const endIdx = trimmedLine.indexOf('*/');
+                if (startIdx >= 2 && endIdx > startIdx) {
+                    const commentText = trimmedLine.substring(startIdx, endIdx).trim();
+                    if (commentText) {
+                        docLines.unshift(commentText);
+                    }
+                }
             } else {
                 // Non-comment line, stop looking
                 break;
