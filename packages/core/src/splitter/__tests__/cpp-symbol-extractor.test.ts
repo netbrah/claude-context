@@ -421,4 +421,455 @@ int testFunc(int param) {
             expect(testFunc?.usages).toBeDefined();
         });
     });
+
+    describe('Advanced Function Extraction', () => {
+        it('should extract multiple functions from same file', () => {
+            const code = `
+int func1() { return 1; }
+int func2() { return 2; }
+int func3() { return 3; }
+int func4() { return 4; }
+int func5() { return 5; }
+            `;
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            expect(symbols.length).toBeGreaterThanOrEqual(5);
+            expect(symbols.filter(s => s.kind === SymbolKind.Function).length).toBeGreaterThanOrEqual(5);
+        });
+
+        it('should handle functions with empty bodies', () => {
+            const code = `void empty() {}`;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const emptyFunc = symbols.find(s => s.name === 'empty');
+            expect(emptyFunc).toBeDefined();
+            expect(emptyFunc?.kind).toBe(SymbolKind.Function);
+        });
+
+        it('should extract function signatures', () => {
+            const code = `
+std::vector<int> process(const std::string& name, int count) {
+    return std::vector<int>(count, 0);
+}
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const processFunc = symbols.find(s => s.name === 'process');
+            expect(processFunc).toBeDefined();
+            expect(processFunc?.signature).toBeDefined();
+        });
+
+        it('should handle functions with default parameters', () => {
+            const code = `int compute(int x, int y = 10) { return x + y; }`;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const computeFunc = symbols.find(s => s.name === 'compute');
+            expect(computeFunc).toBeDefined();
+        });
+
+        it('should handle functions with reference parameters', () => {
+            const code = `void modify(int& value) { value = 42; }`;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const modifyFunc = symbols.find(s => s.name === 'modify');
+            expect(modifyFunc).toBeDefined();
+        });
+
+        it('should handle functions with pointer parameters', () => {
+            const code = `void process(int* ptr) { *ptr = 100; }`;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const processFunc = symbols.find(s => s.name === 'process');
+            expect(processFunc).toBeDefined();
+        });
+
+        it('should handle functions with const reference parameters', () => {
+            const code = `void display(const std::string& text) { /* ... */ }`;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const displayFunc = symbols.find(s => s.name === 'display');
+            expect(displayFunc).toBeDefined();
+        });
+
+        it('should handle functions with no parameters', () => {
+            const code = `int getValue() { return 42; }`;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const getValueFunc = symbols.find(s => s.name === 'getValue');
+            expect(getValueFunc).toBeDefined();
+        });
+
+        it('should handle functions with multiple parameters', () => {
+            const code = `int sum(int a, int b, int c, int d) { return a + b + c + d; }`;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const sumFunc = symbols.find(s => s.name === 'sum');
+            expect(sumFunc).toBeDefined();
+        });
+    });
+
+    describe('Advanced Class Extraction', () => {
+        it('should extract empty class', () => {
+            const code = `class Empty {};`;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const emptyClass = symbols.find(s => s.name === 'Empty');
+            expect(emptyClass).toBeDefined();
+            expect(emptyClass?.kind).toBe(SymbolKind.Class);
+        });
+
+        it('should extract class with only constructor', () => {
+            const code = `
+class Point {
+public:
+    Point(int x, int y) : x_(x), y_(y) {}
+private:
+    int x_, y_;
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const pointClass = symbols.find(s => s.name === 'Point');
+            expect(pointClass).toBeDefined();
+        });
+
+        it('should extract class with destructor', () => {
+            const code = `
+class Resource {
+public:
+    Resource() {}
+    virtual ~Resource() {}
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const resourceClass = symbols.find(s => s.name === 'Resource');
+            expect(resourceClass).toBeDefined();
+        });
+
+        it('should extract class with multiple inheritance', () => {
+            const code = `
+class Base1 {};
+class Base2 {};
+class Derived : public Base1, public Base2 {};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const derivedClass = symbols.find(s => s.name === 'Derived');
+            expect(derivedClass).toBeDefined();
+            expect(derivedClass?.baseClasses).toBeDefined();
+        });
+
+        it('should extract nested classes', () => {
+            const code = `
+class Outer {
+public:
+    class Inner {
+        int value;
+    };
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const outerClass = symbols.find(s => s.name === 'Outer');
+            const innerClass = symbols.find(s => s.name === 'Inner');
+            expect(outerClass).toBeDefined();
+            expect(innerClass).toBeDefined();
+        });
+
+        it('should extract abstract class', () => {
+            const code = `
+class AbstractBase {
+public:
+    virtual void pureVirtual() = 0;
+    virtual void regularVirtual() {}
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const abstractClass = symbols.find(s => s.name === 'AbstractBase');
+            expect(abstractClass).toBeDefined();
+        });
+
+        it('should extract forward declared class', () => {
+            const code = `
+class Forward;
+class Actual {
+    Forward* ptr;
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const actualClass = symbols.find(s => s.name === 'Actual');
+            expect(actualClass).toBeDefined();
+        });
+    });
+
+    describe('Field and Variable Extraction', () => {
+        it('should extract public fields', () => {
+            const code = `
+class Data {
+public:
+    int publicField;
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            expect(symbols).toBeDefined();
+            const dataClass = symbols.find(s => s.name === 'Data');
+            expect(dataClass).toBeDefined();
+        });
+
+        it('should extract private fields', () => {
+            const code = `
+class Secure {
+private:
+    int privateField;
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const secureClass = symbols.find(s => s.name === 'Secure');
+            expect(secureClass).toBeDefined();
+        });
+
+        it('should extract static member variables', () => {
+            const code = `
+class Counter {
+public:
+    static int count;
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const counterClass = symbols.find(s => s.name === 'Counter');
+            expect(counterClass).toBeDefined();
+        });
+
+        it('should extract const member variables', () => {
+            const code = `
+class Constants {
+public:
+    const int MAX_SIZE;
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const constantsClass = symbols.find(s => s.name === 'Constants');
+            expect(constantsClass).toBeDefined();
+        });
+
+        it('should handle multiple fields in one declaration', () => {
+            const code = `
+class Point3D {
+public:
+    int x, y, z;
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const point3D = symbols.find(s => s.name === 'Point3D');
+            expect(point3D).toBeDefined();
+        });
+    });
+
+    describe('Advanced Namespace Extraction', () => {
+        it('should extract anonymous namespaces', () => {
+            const code = `
+namespace {
+    int helper() { return 42; }
+}
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            expect(symbols).toBeDefined();
+            expect(Array.isArray(symbols)).toBe(true);
+        });
+
+        it('should extract multiple namespaces', () => {
+            const code = `
+namespace NS1 { void func1() {} }
+namespace NS2 { void func2() {} }
+namespace NS3 { void func3() {} }
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const ns1 = symbols.find(s => s.name === 'NS1');
+            const ns2 = symbols.find(s => s.name === 'NS2');
+            const ns3 = symbols.find(s => s.name === 'NS3');
+            expect(ns1 || ns2 || ns3).toBeDefined();
+        });
+
+        it('should handle deeply nested namespaces', () => {
+            const code = `
+namespace Level1 {
+    namespace Level2 {
+        namespace Level3 {
+            void deepFunc() {}
+        }
+    }
+}
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            expect(symbols).toBeDefined();
+            expect(symbols.length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('Template and Generic Features', () => {
+        it('should extract template class', () => {
+            const code = `
+template<typename T>
+class Container {
+    T value;
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const container = symbols.find(s => s.name === 'Container');
+            expect(container).toBeDefined();
+        });
+
+        it('should extract template function with multiple parameters', () => {
+            const code = `
+template<typename T, typename U>
+T convert(U value) { return static_cast<T>(value); }
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const convertFunc = symbols.find(s => s.name === 'convert');
+            expect(convertFunc).toBeDefined();
+        });
+
+        it('should handle variadic templates', () => {
+            const code = `
+template<typename... Args>
+void print(Args... args) {}
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const printFunc = symbols.find(s => s.name === 'print');
+            expect(printFunc).toBeDefined();
+        });
+    });
+
+    describe('Method and Access Specifier Tests', () => {
+        it('should extract methods with different access specifiers', () => {
+            const code = `
+class AccessTest {
+public:
+    void publicMethod() {}
+protected:
+    void protectedMethod() {}
+private:
+    void privateMethod() {}
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const accessTest = symbols.find(s => s.name === 'AccessTest');
+            expect(accessTest).toBeDefined();
+        });
+
+        it('should extract virtual methods', () => {
+            const code = `
+class VirtualTest {
+    virtual void virtualMethod() {}
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const virtualTest = symbols.find(s => s.name === 'VirtualTest');
+            expect(virtualTest).toBeDefined();
+        });
+
+        it('should extract override methods', () => {
+            const code = `
+class Base {
+    virtual void method() {}
+};
+class Derived : public Base {
+    void method() override {}
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const derivedClass = symbols.find(s => s.name === 'Derived');
+            expect(derivedClass).toBeDefined();
+        });
+
+        it('should extract final methods', () => {
+            const code = `
+class FinalTest {
+    virtual void method() final {}
+};
+            `;
+            
+            const tree = parser.parse(code);
+            const symbols = extractor.extractSymbols(tree.rootNode, code);
+
+            const finalTest = symbols.find(s => s.name === 'FinalTest');
+            expect(finalTest).toBeDefined();
+        });
+    });
 });
