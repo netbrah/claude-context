@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        node-version: [20.x]
+        node-version: [18.x]  # Changed from 20.x to fix tree-sitter-cpp native binding issues
     
     steps:
       - name: Checkout code
