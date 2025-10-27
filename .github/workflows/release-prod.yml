@@ -1,0 +1,147 @@
+name: Release (Production)
+
+# Production release workflow
+# Triggered by pushing v* tags (e.g., v1.0.0)
+# Publishes to npm and VSCode marketplace
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '!dev-*'
+
+jobs:
+  release-production:
+    name: Production Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      packages: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test:core
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Run benchmarks
+        run: |
+          pnpm benchmark
+          pnpm benchmark:cpp
+
+      - name: Create package tarballs (backup)
+        run: |
+          pnpm --filter @zilliz/claude-context-core pack
+          pnpm --filter @zilliz/claude-context-mcp pack
+          mv packages/core/zilliz-claude-context-core-*.tgz ./
+          mv packages/mcp/zilliz-claude-context-mcp-*.tgz ./
+
+      - name: Publish core package to npm
+        run: pnpm --filter @zilliz/claude-context-core publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish MCP package to npm
+        run: pnpm --filter @zilliz/claude-context-mcp publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build and publish VSCode extension
+        if: ${{ secrets.VSCE_PAT != '' }}
+        run: |
+          pnpm --filter semanticcodesearch run webpack
+          pnpm --filter semanticcodesearch run package
+          pnpm --filter semanticcodesearch run release
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Package VSCode extension (if publishing failed)
+        if: ${{ secrets.VSCE_PAT == '' }}
+        run: |
+          pnpm --filter semanticcodesearch run webpack
+          pnpm --filter semanticcodesearch run package
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            zilliz-claude-context-core-*.tgz
+            zilliz-claude-context-mcp-*.tgz
+            packages/vscode-extension/*.vsix
+            build-benchmark.json
+            cpp-benchmark-results.json
+          draft: false
+          prerelease: false
+          name: "Release ${{ github.ref_name }}"
+          generate_release_notes: true
+          body: |
+            ## Production Release ${{ github.ref_name }}
+            
+            ### 📦 Published Packages
+            
+            - **npm**: [@zilliz/claude-context-core](https://www.npmjs.com/package/@zilliz/claude-context-core)
+            - **npm**: [@zilliz/claude-context-mcp](https://www.npmjs.com/package/@zilliz/claude-context-mcp)
+            - **VSCode Marketplace**: [Semantic Code Search](https://marketplace.visualstudio.com/items?itemName=zilliz.semanticcodesearch)
+            
+            ### 🚀 Installation
+            
+            **Core Package**:
+            ```bash
+            npm install @zilliz/claude-context-core
+            ```
+            
+            **MCP Package**:
+            ```bash
+            npm install @zilliz/claude-context-mcp
+            # or
+            npx @zilliz/claude-context-mcp
+            ```
+            
+            **VSCode Extension**:
+            Search for "Semantic Code Search" in VSCode Extensions, or install the VSIX file manually.
+            
+            ### 📊 Build Artifacts
+            
+            Tarball backups and benchmark results are attached to this release.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate workflow summary
+        run: |
+          echo "## Production Release Published 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Published To" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ npm: [@zilliz/claude-context-core](https://www.npmjs.com/package/@zilliz/claude-context-core)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ npm: [@zilliz/claude-context-mcp](https://www.npmjs.com/package/@zilliz/claude-context-mcp)" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ secrets.VSCE_PAT }}" ]; then
+            echo "- ✅ VSCode Marketplace" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ VSCode Marketplace (VSCE_PAT not configured)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### GitHub Release" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Tarball backups attached" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Benchmark results attached" >> $GITHUB_STEP_SUMMARY

@@ -20,6 +20,7 @@ coverage/
 
 # Benchmark results
 cpp-benchmark-results.json
+build-benchmark.json
 
 # Packaged archives (except pre-built ones in root)
 packages/**/*.tgz
