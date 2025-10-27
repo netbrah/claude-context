@@ -11,9 +11,10 @@
         "lint": "eslint src --ext .ts",
         "lint:fix": "eslint src --ext .ts --fix",
         "typecheck": "tsc --noEmit",
-        "test": "jest",
-        "test:watch": "jest --watch",
-        "test:coverage": "jest --coverage"
+        "test": "jest --maxWorkers=50%",
+        "test:serial": "jest --maxWorkers=1",
+        "test:watch": "jest --watch --maxWorkers=1",
+        "test:coverage": "jest --coverage --maxWorkers=50%"
     },
     "dependencies": {
         "@ganezdragon/tree-sitter-perl": "^1.1.1",
