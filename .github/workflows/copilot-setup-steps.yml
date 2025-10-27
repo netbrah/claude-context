@@ -56,11 +56,20 @@ jobs:
           cd packages/mcp
           pnpm pack --dry-run
       
-      - name: Test MCP server startup
+      - name: Test MCP server startup (Unix)
+        if: matrix.os != 'windows-latest'
         run: |
           cd packages/mcp
           timeout 10s node dist/index.js || exit 0
         shell: bash
+        continue-on-error: true
+      
+      - name: Test MCP server startup (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd packages/mcp
+          Start-Process -NoNewWindow -FilePath "node" -ArgumentList "dist/index.js" -PassThru | ForEach-Object { Start-Sleep -Seconds 10; Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+        shell: pwsh
         continue-on-error: true
       
       - name: Create setup summary
@@ -117,8 +126,8 @@ jobs:
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Key Setup Requirements" >> $GITHUB_STEP_SUMMARY
-          echo "- Node.js >= 20.0.0 and < 24.0.0" >> $GITHUB_STEP_SUMMARY
-          echo "- pnpm >= 10.0.0" >> $GITHUB_STEP_SUMMARY
+          echo "- Node.js 20.x or 22.x" >> $GITHUB_STEP_SUMMARY
+          echo "- pnpm 10.x" >> $GITHUB_STEP_SUMMARY
           echo "- OpenAI API Key (for embeddings)" >> $GITHUB_STEP_SUMMARY
           echo "- Zilliz Cloud API Key (for vector database)" >> $GITHUB_STEP_SUMMARY
       
