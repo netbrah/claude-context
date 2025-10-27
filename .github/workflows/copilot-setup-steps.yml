@@ -52,12 +52,12 @@ jobs:
       - name: Verify core package
         run: |
           cd packages/core
-          pnpm pack --dry-run
+          pnpm pack
       
       - name: Verify MCP package
         run: |
           cd packages/mcp
-          pnpm pack --dry-run
+          pnpm pack
       
       - name: Test MCP server startup (Unix)
         if: matrix.os != 'windows-latest'
