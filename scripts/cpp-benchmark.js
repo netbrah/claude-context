@@ -139,21 +139,6 @@ function runParserBenchmark() {
     // Save results
     saveResults(results);
     
-    // Run actual tests
-    log('\n' + '='.repeat(80), colors.cyan);
-    log('🧪 Running Jest Tests', colors.bright + colors.cyan);
-    log('='.repeat(80), colors.cyan);
-    
-    try {
-        execSync('pnpm test', { 
-            cwd: path.join(__dirname, '../packages/core'),
-            stdio: 'inherit'
-        });
-        log('\n✅ All tests passed!', colors.green);
-    } catch (error) {
-        log('\n❌ Some tests failed', colors.yellow);
-    }
-    
     log('\n✅ Benchmark complete!', colors.bright + colors.green);
     log(`📄 Results saved to ${RESULTS_FILE}\n`, colors.blue);
 }

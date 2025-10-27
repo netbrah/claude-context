@@ -14,6 +14,38 @@ const CSharp = require('tree-sitter-c-sharp');
 const Scala = require('tree-sitter-scala');
 const Perl = require('@ganezdragon/tree-sitter-perl');
 
+// Validate parsers are loaded
+if (!JavaScript) {
+    throw new Error('tree-sitter-javascript parser failed to load. Please ensure tree-sitter-javascript is properly installed.');
+}
+if (!TypeScript) {
+    throw new Error('tree-sitter-typescript parser failed to load. Please ensure tree-sitter-typescript is properly installed.');
+}
+if (!Python) {
+    throw new Error('tree-sitter-python parser failed to load. Please ensure tree-sitter-python is properly installed.');
+}
+if (!Java) {
+    throw new Error('tree-sitter-java parser failed to load. Please ensure tree-sitter-java is properly installed.');
+}
+if (!Cpp) {
+    throw new Error('tree-sitter-cpp parser failed to load. Please ensure tree-sitter-cpp is properly installed.');
+}
+if (!Go) {
+    throw new Error('tree-sitter-go parser failed to load. Please ensure tree-sitter-go is properly installed.');
+}
+if (!Rust) {
+    throw new Error('tree-sitter-rust parser failed to load. Please ensure tree-sitter-rust is properly installed.');
+}
+if (!CSharp) {
+    throw new Error('tree-sitter-c-sharp parser failed to load. Please ensure tree-sitter-c-sharp is properly installed.');
+}
+if (!Scala) {
+    throw new Error('tree-sitter-scala parser failed to load. Please ensure tree-sitter-scala is properly installed.');
+}
+if (!Perl) {
+    throw new Error('@ganezdragon/tree-sitter-perl parser failed to load. Please ensure @ganezdragon/tree-sitter-perl is properly installed.');
+}
+
 // Node types that represent logical code units
 const SPLITTABLE_NODE_TYPES = {
     javascript: ['function_declaration', 'arrow_function', 'class_declaration', 'method_definition', 'export_statement'],
@@ -88,7 +120,12 @@ export class AstCodeSplitter implements Splitter {
 
             return refinedChunks;
         } catch (error) {
-            console.warn(`[ASTSplitter] ⚠️  AST splitter failed for ${language}, falling back to LangChain: ${error}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : '';
+            console.warn(`[ASTSplitter] ⚠️  AST splitter failed for ${language}, falling back to LangChain: ${errorMessage}`);
+            if (errorStack) {
+                console.warn(`[ASTSplitter] Error stack: ${errorStack}`);
+            }
             return await this.langchainFallback.split(code, language, filePath);
         }
     }
