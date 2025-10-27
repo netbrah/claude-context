@@ -66,8 +66,8 @@ export class CppSymbolExtractor {
      */
     public extractSymbols(root: Parser.SyntaxNode, code: string): SymbolInfo[] {
         try {
-            // Validate inputs
-            if (!root || !code) {
+            // Validate inputs (allow empty string, but not null/undefined)
+            if (!root || code === null || code === undefined) {
                 console.warn('[CppSymbolExtractor] Invalid input to extractSymbols');
                 return [];
             }
@@ -93,8 +93,8 @@ export class CppSymbolExtractor {
      */
     public extractChunkSymbols(node: Parser.SyntaxNode, code: string): SymbolInfo[] {
         try {
-            // Validate inputs
-            if (!node || !code) {
+            // Validate inputs (allow empty string, but not null/undefined)
+            if (!node || code === null || code === undefined) {
                 console.warn('[CppSymbolExtractor] Invalid input to extractChunkSymbols');
                 return [];
             }
