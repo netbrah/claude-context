@@ -78,11 +78,16 @@ if (pkg.dependencies['@zilliz/claude-context-core']) {
   pkg.dependencies['@zilliz/claude-context-core'] = corePkg.version;
 }
 
+// Add @langchain/core explicitly as it's a peer dependency that npm might not install
+// This is required by @langchain/textsplitters
+pkg.dependencies['@langchain/core'] = '^0.3.0';
+
 // Don't manually list bundledDependencies - let npm figure it out after install
 // We'll add it after npm install completes with the full dependency tree
 
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
 console.log('✅ Resolved workspace references to versions');
+console.log('✅ Added @langchain/core as explicit dependency');
 " CORE_PACK_FILE="$CORE_PACK_FILE"
 
 # Now install all dependencies in this isolated workspace
@@ -121,19 +126,6 @@ if [ $NPM_EXIT_CODE -ne 0 ]; then
         echo "⚠️ No npm log file found"
     fi
     exit 1
-fi
-
-echo "✅ All dependencies installed successfully"
-
-# Install peer dependencies explicitly
-echo "📥 Installing peer dependencies..."
-# Find all packages and install their peer dependencies
-npx install-peerdeps --dev=false --only-peers || echo "⚠️ No install-peerdeps tool, using manual approach"
-
-# Manual approach: Check for @langchain/core specifically since we know it's needed
-if [ ! -d "node_modules/@langchain/core" ]; then
-    echo "⚠️ @langchain/core not found, installing explicitly..."
-    npm install @langchain/core --production --save
 fi
 
 echo "✅ All dependencies installed successfully in isolated workspace"
