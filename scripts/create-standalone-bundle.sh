@@ -62,13 +62,24 @@ console.log('✅ Added bundledDependencies:', pkg.bundledDependencies.length, 'p
 console.log('✅ Resolved workspace references to versions');
 "
 
-# Manually install the core package from the workspace
-# npm doesn't understand workspace:* so we need to install it from the local path
-echo "📥 Installing core package from local workspace..."
-npm install ../core --install-links
+# First, pack the core package to create a tarball
+echo "📦 Creating core package tarball first..."
+cd "$ROOT_DIR/packages/core"
+npm install --production --ignore-scripts
+CORE_PACK_FILE=$(npm pack 2>&1 | tail -n 1)
+echo "Core package packed: $CORE_PACK_FILE"
+
+# Move core tarball to a temp location
+mkdir -p "$TEMP_DIR/core-pkg"
+mv "$CORE_PACK_FILE" "$TEMP_DIR/core-pkg/"
+
+# Go back to MCP package and install core from the tarball
+cd "$ROOT_DIR/packages/mcp"
+echo "📥 Installing core package from local tarball..."
+npm install "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" --no-save
 
 # Install ALL other dependencies (including core's dependencies) in node_modules
-echo "📥 Installing all dependencies locally with npm..."
+echo "📥 Installing all other dependencies locally with npm..."
 npm install --production --ignore-scripts
 
 # Pack the MCP package with bundled dependencies
@@ -92,26 +103,18 @@ echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 # Restore original package.json
 mv package.json.backup package.json
 
-# Create core package tarball
-echo "📦 Creating Core package tarball..."
-cd "$ROOT_DIR/packages/core"
-npm install --production --ignore-scripts
+# Core package tarball was already created earlier - just locate it
+echo "📦 Locating Core package tarball..."
+CORE_TARBALL=$(find "$TEMP_DIR/core-pkg" -name "zilliz-claude-context-core-*.tgz" -type f | head -n 1)
 
-# Using npm for consistent bundling behavior
-npm pack --pack-destination "$TEMP_DIR"
-
-# Find the created tarball
-CORE_PACKED=$(find "$TEMP_DIR" -name "zilliz-claude-context-core-*.tgz" -type f | head -n 1)
-
-if [ -z "$CORE_PACKED" ] || [ ! -f "$CORE_PACKED" ]; then
-    echo "❌ Error: npm pack failed for core package"
+if [ -z "$CORE_TARBALL" ] || [ ! -f "$CORE_TARBALL" ]; then
+    echo "❌ Error: Core package tarball not found"
     echo "Files in temp directory:"
-    ls -la "$TEMP_DIR"
+    ls -la "$TEMP_DIR/core-pkg"
     exit 1
 fi
 
-CORE_TARBALL="$CORE_PACKED"
-echo "✅ Core bundle created: $(basename "$CORE_TARBALL")"
+echo "✅ Core bundle located: $(basename "$CORE_TARBALL")"
 
 # Create final bundle structure
 echo "📁 Creating final bundle structure..."
