@@ -92,9 +92,18 @@ echo "🔍 Core tarball: $CORE_PACK_FILE"
 
 # Install core package and ALL its dependencies (including transitive)
 # --production: skip devDependencies
-# --legacy-peer-deps: ignore peer dependency conflicts
+# Remove --legacy-peer-deps so peer dependencies ARE installed
 # NO --ignore-scripts: some packages need postinstall scripts
-npm install "./$CORE_PACK_FILE" --production --legacy-peer-deps
+# Now install all dependencies in this isolated workspace
+echo "📥 Installing all dependencies in isolated npm workspace..."
+echo "🔍 Current directory: $(pwd)"
+echo "🔍 Core tarball: $CORE_PACK_FILE"
+
+# Install core package and ALL its dependencies (including transitive)
+# --production: skip devDependencies
+# Remove --legacy-peer-deps so peer dependencies ARE installed
+# NO --ignore-scripts: some packages need postinstall scripts
+npm install "./$CORE_PACK_FILE" --production
 NPM_EXIT_CODE=$?
 
 echo "📊 npm install exit code: $NPM_EXIT_CODE"
@@ -112,6 +121,19 @@ if [ $NPM_EXIT_CODE -ne 0 ]; then
         echo "⚠️ No npm log file found"
     fi
     exit 1
+fi
+
+echo "✅ All dependencies installed successfully"
+
+# Install peer dependencies explicitly
+echo "📥 Installing peer dependencies..."
+# Find all packages and install their peer dependencies
+npx install-peerdeps --dev=false --only-peers || echo "⚠️ No install-peerdeps tool, using manual approach"
+
+# Manual approach: Check for @langchain/core specifically since we know it's needed
+if [ ! -d "node_modules/@langchain/core" ]; then
+    echo "⚠️ @langchain/core not found, installing explicitly..."
+    npm install @langchain/core --production --save
 fi
 
 echo "✅ All dependencies installed successfully in isolated workspace"
@@ -134,21 +156,26 @@ function getInstalledPackages(dir, scope = '') {
       if (item === '.bin' || item === '.package-lock.json') continue;
       
       const fullPath = path.join(dir, item);
-      const stat = fs.statSync(fullPath);
       
-      if (stat.isDirectory()) {
-        if (item.startsWith('@')) {
-          // Scoped package directory, recurse
-          getInstalledPackages(fullPath, item);
-        } else {
-          // Regular package
-          const pkgName = scope ? \`\${scope}/\${item}\` : item;
-          packages.push(pkgName);
+      try {
+        const stat = fs.statSync(fullPath);
+        
+        if (stat.isDirectory()) {
+          if (item.startsWith('@')) {
+            // Scoped package directory - recurse into it
+            getInstalledPackages(fullPath, item);
+          } else {
+            // Regular package
+            const pkgName = scope ? \`\${scope}/\${item}\` : item;
+            packages.push(pkgName);
+          }
         }
+      } catch (e) {
+        // Skip if can't stat
       }
     }
   } catch (e) {
-    // Ignore errors
+    // Ignore errors reading directory
   }
 }
 
@@ -159,7 +186,15 @@ pkg.bundledDependencies = packages;
 
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
 console.log('✅ Added', packages.length, 'packages to bundledDependencies');
-console.log('Including:', packages.slice(0, 10).join(', '), '...');
+console.log('Sample packages:', packages.slice(0, 15).join(', '), '...');
+
+// Show @langchain packages specifically to verify
+const langchainPkgs = packages.filter(p => p.startsWith('@langchain'));
+if (langchainPkgs.length > 0) {
+  console.log('✅ Found', langchainPkgs.length, '@langchain packages:', langchainPkgs.join(', '));
+} else {
+  console.warn('⚠️ No @langchain packages found! This will cause issues.');
+}
 "
 
 # Pack the MCP package with bundled dependencies
