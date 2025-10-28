@@ -283,7 +283,8 @@ elif [ -n "${PERL_PARSER_PREBUILD:-}" ] && [ -f "$PERL_PARSER_PREBUILD" ]; then
 fi
 
 # Install Perl parser if source found
-PERL_PARSER_DIR="core-package/node_modules/@ganezdragon/tree-sitter-perl"
+# Perl parser is in MCP's bundled node_modules, not core
+PERL_PARSER_DIR="mcp-package/node_modules/@ganezdragon/tree-sitter-perl"
 if [ -n "$PERL_SOURCE" ] && [ -d "$PERL_PARSER_DIR" ]; then
     echo "🔧 Installing Perl parser prebuild..."
     
@@ -298,6 +299,9 @@ if [ -n "$PERL_SOURCE" ] && [ -d "$PERL_PARSER_DIR" ]; then
 elif [ -d "$PERL_PARSER_DIR" ]; then
     echo "⚠️ No Perl parser prebuild found"
     echo "   Provide via: PERL_PARSER_PREBUILD=/path/to/parser.node"
+else
+    echo "⚠️ Perl parser package directory not found at: $PERL_PARSER_DIR"
+    echo "   The bundled dependencies may not include @ganezdragon/tree-sitter-perl"
 fi
 
 echo ""
