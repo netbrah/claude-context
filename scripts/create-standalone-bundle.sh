@@ -62,10 +62,11 @@ pnpm install --prod --ignore-scripts
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
 # Use npm pack instead of pnpm pack for better bundledDependencies support
-# Extract just the filename - look for the line with "filename:" and get the last field
-PACKED_FILE=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | grep 'filename:' | awk '{print $NF}')
-if [ -z "$PACKED_FILE" ]; then
+# npm pack outputs the tarball filename as the last line
+PACKED_FILE=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | tail -n 1)
+if [ -z "$PACKED_FILE" ] || [ ! -f "$TEMP_DIR/$PACKED_FILE" ]; then
     echo "❌ Error: npm pack failed or no .tgz file generated"
+    echo "Output: $PACKED_FILE"
     exit 1
 fi
 MCP_TARBALL="$TEMP_DIR/$PACKED_FILE"
@@ -79,10 +80,11 @@ echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 echo "📦 Creating Core package tarball..."
 cd "$ROOT_DIR/packages/core"
 pnpm install --prod --ignore-scripts
-# Extract just the filename - look for the line with "filename:" and get the last field
-CORE_PACKED=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | grep 'filename:' | awk '{print $NF}')
-if [ -z "$CORE_PACKED" ]; then
+# npm pack outputs the tarball filename as the last line
+CORE_PACKED=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | tail -n 1)
+if [ -z "$CORE_PACKED" ] || [ ! -f "$TEMP_DIR/$CORE_PACKED" ]; then
     echo "❌ Error: npm pack failed for core package"
+    echo "Output: $CORE_PACKED"
     exit 1
 fi
 CORE_TARBALL="$TEMP_DIR/$CORE_PACKED"
