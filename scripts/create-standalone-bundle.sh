@@ -62,50 +62,43 @@ npm install --production --ignore-scripts
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
 # Using npm for both install and pack for consistent bundledDependencies handling
-NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" 2>&1)
-PACKED_FILE=$(echo "$NPM_OUTPUT" | tail -n 1)
+npm pack --pack-destination "$TEMP_DIR"
 
-echo "npm pack output: $PACKED_FILE"
+# Find the created tarball (npm creates it with the package name)
+PACKED_FILE=$(find "$TEMP_DIR" -name "zilliz-claude-context-mcp-*.tgz" -type f | head -n 1)
 
-# Validate the filename ends with .tgz and file exists
-if [[ ! "$PACKED_FILE" =~ \.tgz$ ]] || [ ! -f "$TEMP_DIR/$PACKED_FILE" ]; then
+if [ -z "$PACKED_FILE" ] || [ ! -f "$PACKED_FILE" ]; then
     echo "❌ Error: npm pack failed or no .tgz file generated"
-    echo "Expected .tgz file, got: $PACKED_FILE"
-    echo ""
-    echo "Full npm pack output:"
-    echo "$NPM_OUTPUT"
-    echo ""
     echo "Files in temp directory:"
     ls -la "$TEMP_DIR"
     exit 1
 fi
-MCP_TARBALL="$TEMP_DIR/$PACKED_FILE"
+
+MCP_TARBALL="$PACKED_FILE"
+echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 
 # Restore original package.json
 mv package.json.backup package.json
-
-echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 
 # Create core package tarball
 echo "📦 Creating Core package tarball..."
 cd "$ROOT_DIR/packages/core"
 npm install --production --ignore-scripts
+
 # Using npm for consistent bundling behavior
-NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" 2>&1)
-CORE_PACKED=$(echo "$NPM_OUTPUT" | tail -n 1)
+npm pack --pack-destination "$TEMP_DIR"
 
-echo "npm pack output: $CORE_PACKED"
+# Find the created tarball
+CORE_PACKED=$(find "$TEMP_DIR" -name "zilliz-claude-context-core-*.tgz" -type f | head -n 1)
 
-# Validate the filename ends with .tgz and file exists
-if [[ ! "$CORE_PACKED" =~ \.tgz$ ]] || [ ! -f "$TEMP_DIR/$CORE_PACKED" ]; then
+if [ -z "$CORE_PACKED" ] || [ ! -f "$CORE_PACKED" ]; then
     echo "❌ Error: npm pack failed for core package"
-    echo "Expected .tgz file, got: $CORE_PACKED"
-    echo ""
-    echo "Full npm pack output:"
-    echo "$NPM_OUTPUT"
+    echo "Files in temp directory:"
+    ls -la "$TEMP_DIR"
     exit 1
 fi
-CORE_TARBALL="$TEMP_DIR/$CORE_PACKED"
+
+CORE_TARBALL="$CORE_PACKED"
 echo "✅ Core bundle created: $(basename "$CORE_TARBALL")"
 
 # Create final bundle structure
