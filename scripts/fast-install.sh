@@ -7,9 +7,8 @@
 #   ./fast-install.sh                    # Install to ./fast-install-test/
 #   ./fast-install.sh /custom/path       # Install to custom location
 #
-# Works in both:
-#   - Development: Run from repo root after creating bundle
-#   - Bundle: Run from extracted claude-context-standalone/ directory
+# Expected to be run from installation directory where tarballs are located
+# (install.sh copies this script to the install dir alongside tarballs)
 
 set -euo pipefail
 
@@ -27,33 +26,26 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 mkdir -p "$INSTALL_DIR"
 
-# Auto-detect where we're running from:
-# 1. Inside bundle (tarballs in same directory as script)
-# 2. Development repo (tarballs in bundle-output/)
-if ls "$SCRIPT_DIR"/zilliz-claude-context-*.tgz 1> /dev/null 2>&1; then
-    # Running from extracted bundle
-    TARBALL_DIR="$SCRIPT_DIR"
-    echo "📦 Running from extracted bundle"
-elif [ -d "$SCRIPT_DIR/../bundle-output/claude-context-standalone" ]; then
-    # Running from development repo
-    TARBALL_DIR="$SCRIPT_DIR/../bundle-output/claude-context-standalone"
-    echo "📦 Running from development repo"
-else
-    echo "❌ Cannot find tarballs!"
+# Tarballs should be in the same directory as this script
+# (install.sh copies fast-install.sh to the install dir with the tarballs)
+TARBALL_DIR="$SCRIPT_DIR"
+
+if ! ls "$TARBALL_DIR"/zilliz-claude-context-*.tgz 1> /dev/null 2>&1; then
+    echo "❌ Cannot find tarballs in: $TARBALL_DIR"
     echo ""
-    echo "Expected locations:"
-    echo "  1. Same directory as script: $SCRIPT_DIR/*.tgz"
-    echo "  2. Bundle output: $SCRIPT_DIR/../bundle-output/claude-context-standalone/*.tgz"
+    echo "Expected: $TARBALL_DIR/zilliz-claude-context-*.tgz"
     echo ""
-    echo "Please run bundle creation first:"
-    echo "  bash scripts/create-standalone-bundle.sh"
+    echo "This script should be run from the directory where install.sh placed it."
+    echo "Typically: ~/.mcp/claude-context/ or your custom install location"
     exit 1
 fi
+
+echo "📦 Found tarballs in: $TARBALL_DIR"
 
 # Copy tarballs to install directory
 echo "📋 Copying packages..."
 cp "$TARBALL_DIR"/zilliz-claude-context-*.tgz "$INSTALL_DIR/" 2>/dev/null || {
-    echo "❌ No tarballs found in: $TARBALL_DIR"
+    echo "❌ Failed to copy tarballs"
     exit 1
 }
 

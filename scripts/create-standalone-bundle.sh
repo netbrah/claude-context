@@ -251,6 +251,14 @@ mkdir -p "$INSTALL_DIR"
 echo "📦 Copying packages..."
 cp "$SCRIPT_DIR"/zilliz-claude-context-*.tgz "$INSTALL_DIR/" 2>/dev/null || true
 
+# Copy fast-install.sh to install directory for quick reinstalls
+echo "📦 Copying fast-install.sh for quick reinstalls..."
+if [ -f "$SCRIPT_DIR/fast-install.sh" ]; then
+    cp "$SCRIPT_DIR/fast-install.sh" "$INSTALL_DIR/"
+    chmod +x "$INSTALL_DIR/fast-install.sh"
+    echo "  ✓ fast-install.sh available for quick testing"
+fi
+
 cd "$INSTALL_DIR"
 
 # Extract core package
@@ -358,6 +366,9 @@ echo ""
 echo "📋 Installation summary:"
 echo "   📁 Location: $INSTALL_DIR"
 echo "   🚀 MCP binary: $INSTALL_DIR/node_modules/.bin/claude-context-mcp"
+if [ -f "$INSTALL_DIR/fast-install.sh" ]; then
+    echo "   ⚡ Quick reinstall: $INSTALL_DIR/fast-install.sh"
+fi
 echo ""
 echo "🔧 Next steps:"
 echo "   1. Add to your MCP configuration:"
@@ -367,6 +378,12 @@ echo "      - OPENAI_API_KEY"
 echo "      - MILVUS_ADDRESS"
 echo "      - EMBEDDING_PROVIDER"
 echo ""
+if [ -f "$INSTALL_DIR/fast-install.sh" ]; then
+    echo "💡 Development tip:"
+    echo "   For quick testing after changes, use fast-install.sh:"
+    echo "   cd $INSTALL_DIR && ./fast-install.sh /tmp/test"
+    echo ""
+fi
 INSTALL_SCRIPT
 chmod +x "$FINAL_BUNDLE/install.sh"
 
@@ -415,14 +432,12 @@ tar -xzf claude-context-standalone-*.tar.gz
 cd claude-context-standalone
 
 # 2. Full Installation (production)
-./install.sh /your/install/path
+./install.sh                      # Installs to ~/.mcp/claude-context
+./install.sh /custom/path         # Or custom location
 
-# 3. Fast Installation (development/testing)
-./fast-install.sh /your/test/path
+# 3. Configure MCP client (see below)
 
-# 4. Configure MCP client (see below)
-
-# 5. Restart your MCP client (VSCode, Claude Desktop, etc.)
+# 4. Restart your MCP client (VSCode, Claude Desktop, etc.)
 ```
 
 ## Installation Scripts
@@ -430,10 +445,11 @@ cd claude-context-standalone
 ### `install.sh` - Full Production Installation
 
 Complete installation with all features:
-- Extracts packages
+- Extracts packages to install directory
 - Creates node_modules structure with symlinks
 - Installs native module prebuilds (faiss-node, Perl parser)
 - Creates executable binary in `.bin/`
+- **Copies fast-install.sh to install directory** for quick reinstalls
 - Ready for production use
 
 ```bash
@@ -447,29 +463,46 @@ Complete installation with all features:
 FAISS_PREBUILD=/path/to/faiss.tar.gz ./install.sh
 ```
 
+After installation, your directory will contain:
+```
+~/.mcp/claude-context/           # Or your custom path
+├── zilliz-claude-context-*.tgz  # Original tarballs (kept for fast-install)
+├── fast-install.sh              # Quick reinstall script
+├── core-package/                # Extracted core
+├── mcp-package/                 # Extracted MCP with bundled deps
+└── node_modules/                # Symlinks and executables
+```
+
 ### `fast-install.sh` - Quick Development Setup
 
 Minimal installation for rapid testing:
-- Extracts packages only
+- **Run from install directory** (where install.sh copied it)
+- Extracts packages to test location
 - Creates basic node_modules symlinks
 - **Skips prebuild installation** (faster)
 - **No .bin/ executables** (run directly with node)
 - Perfect for iterative development
 
 ```bash
-# Default location (./fast-install-test/)
-./fast-install.sh
+# After running install.sh, fast-install.sh is in your install directory:
+cd ~/.mcp/claude-context
 
-# Custom location
-./fast-install.sh /tmp/test-mcp
+# Quick reinstall to test location
+./fast-install.sh                    # Creates ./fast-install-test/
+./fast-install.sh /tmp/test-mcp      # Or custom location
 
-# Test directly
+# Test directly without full installation
 node /tmp/test-mcp/mcp-package/dist/index.js
 ```
 
+**Workflow:**
+1. Run `install.sh` once (full production install)
+2. Use `fast-install.sh` from install dir for quick testing
+3. No need to re-run full install.sh for testing changes
+
 **When to use:**
 - `install.sh`: Production deployment, first-time setup, need native modules
-- `fast-install.sh`: Quick testing, development iteration, debugging
+- `fast-install.sh`: Quick testing from install directory, development iteration, debugging
 
 ## What's Included
 
