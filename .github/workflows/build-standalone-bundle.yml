@@ -120,6 +120,25 @@ jobs:
             ls -lh prebuilds/linux-x64/tree_sitter_perl_binding.node
           fi
 
+      - name: Download faiss-node prebuild
+        run: |
+          echo "📥 Downloading faiss-node prebuild for x86_64 Linux..."
+          mkdir -p prebuilds/linux-x64
+          
+          FAISS_URL="https://github.com/ewfian/faiss-node/releases/download/v0.5.1/faiss-node-v0.5.1-napi-v8-linux-x64.tar.gz"
+          FAISS_FILE="prebuilds/linux-x64/faiss-node-v0.5.1-napi-v8-linux-x64.tar.gz"
+          
+          curl -L -o "$FAISS_FILE" "$FAISS_URL"
+          
+          if [ -f "$FAISS_FILE" ]; then
+            echo "✅ faiss-node prebuild downloaded:"
+            ls -lh "$FAISS_FILE"
+            echo "SHA256: $(sha256sum $FAISS_FILE | cut -d' ' -f1)"
+          else
+            echo "❌ Failed to download faiss-node prebuild"
+            exit 1
+          fi
+
       - name: Copy prebuilt binaries to expected location
         run: |
           echo "� Checking for prebuilt binaries..."
