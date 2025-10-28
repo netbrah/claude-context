@@ -65,7 +65,7 @@ cp "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" "$NPM_WORKSPACE/"
 cd "$NPM_WORKSPACE"
 
 # Modify package.json to add bundledDependencies and resolve workspace references
-echo "� Preparing bundled dependencies in isolated workspace..."
+echo "🔧 Preparing bundled dependencies in isolated workspace..."
 node -e "
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
@@ -73,22 +73,15 @@ const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 // Get all dependencies from core package
 const corePkg = JSON.parse(require('child_process').execSync('tar -xOf $CORE_PACK_FILE package/package.json').toString());
 
-// Bundle everything
-pkg.bundledDependencies = [
-  '@zilliz/claude-context-core',
-  '@modelcontextprotocol/sdk',
-  'zod',
-  // Include all core dependencies
-  ...Object.keys(corePkg.dependencies || {})
-];
-
 // IMPORTANT: Replace workspace: protocol with actual version for npm compatibility
 if (pkg.dependencies['@zilliz/claude-context-core']) {
   pkg.dependencies['@zilliz/claude-context-core'] = corePkg.version;
 }
 
+// Don't manually list bundledDependencies - let npm figure it out after install
+// We'll add it after npm install completes with the full dependency tree
+
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-console.log('✅ Added bundledDependencies:', pkg.bundledDependencies.length, 'packages');
 console.log('✅ Resolved workspace references to versions');
 " CORE_PACK_FILE="$CORE_PACK_FILE"
 
@@ -97,7 +90,11 @@ echo "📥 Installing all dependencies in isolated npm workspace..."
 echo "🔍 Current directory: $(pwd)"
 echo "🔍 Core tarball: $CORE_PACK_FILE"
 
-npm install "./$CORE_PACK_FILE" --production --ignore-scripts --legacy-peer-deps
+# Install core package and ALL its dependencies (including transitive)
+# --production: skip devDependencies
+# --legacy-peer-deps: ignore peer dependency conflicts
+# NO --ignore-scripts: some packages need postinstall scripts
+npm install "./$CORE_PACK_FILE" --production --legacy-peer-deps
 NPM_EXIT_CODE=$?
 
 echo "📊 npm install exit code: $NPM_EXIT_CODE"
@@ -118,6 +115,52 @@ if [ $NPM_EXIT_CODE -ne 0 ]; then
 fi
 
 echo "✅ All dependencies installed successfully in isolated workspace"
+
+# Now add bundledDependencies to include ALL installed packages
+echo "🔧 Adding bundledDependencies for complete packaging..."
+node -e "
+const fs = require('fs');
+const path = require('path');
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+
+// Get all installed packages from node_modules
+const nodeModulesPath = './node_modules';
+const packages = [];
+
+function getInstalledPackages(dir, scope = '') {
+  try {
+    const items = fs.readdirSync(dir);
+    for (const item of items) {
+      if (item === '.bin' || item === '.package-lock.json') continue;
+      
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
+      
+      if (stat.isDirectory()) {
+        if (item.startsWith('@')) {
+          // Scoped package directory, recurse
+          getInstalledPackages(fullPath, item);
+        } else {
+          // Regular package
+          const pkgName = scope ? \`\${scope}/\${item}\` : item;
+          packages.push(pkgName);
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+}
+
+getInstalledPackages(nodeModulesPath);
+
+// Set bundledDependencies to include ALL packages
+pkg.bundledDependencies = packages;
+
+fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+console.log('✅ Added', packages.length, 'packages to bundledDependencies');
+console.log('Including:', packages.slice(0, 10).join(', '), '...');
+"
 
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
