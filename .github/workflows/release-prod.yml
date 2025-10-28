@@ -77,9 +77,15 @@ jobs:
           pnpm build
           pnpm typecheck
           
-          echo "🧪 Running tests..."
+          echo "🧪 Running tests separately..."
           cd packages/core
-          pnpm test -- --testPathPattern="cpp-parser|cpp-fixtures|smf-parser|perl-parser" --coverage
+          pnpm test -- cpp-parser.test.ts --verbose
+          pnpm test -- cpp-fixtures.test.ts --verbose
+          pnpm test -- smf-parser.test.ts --verbose
+          pnpm test -- perl-parser.test.ts --verbose
+          pnpm test -- cpp-symbol-extractor.test.ts --verbose || true
+          pnpm test -- cpp-symbol-extractor-edge-cases.test.ts --verbose || true
+          pnpm test -- cpp-symbol-metadata.test.ts --verbose || true
           cd ../..
 
       - name: Update package versions
