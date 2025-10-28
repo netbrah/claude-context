@@ -56,18 +56,16 @@ console.log('✅ Added bundledDependencies:', pkg.bundledDependencies.length, 'p
 "
 
 # Install ALL dependencies (including core's dependencies) in node_modules
-echo "📥 Installing all dependencies locally..."
-pnpm install --prod --ignore-scripts
+echo "📥 Installing all dependencies locally with npm..."
+npm install --production --ignore-scripts
 
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
-# Use npm pack instead of pnpm pack for better bundledDependencies support
-# Add --loglevel=verbose to see what's happening
-echo "Running npm pack with verbose logging..."
-NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" --loglevel=verbose 2>&1)
+# Using npm for both install and pack for consistent bundledDependencies handling
+NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" 2>&1)
 PACKED_FILE=$(echo "$NPM_OUTPUT" | tail -n 1)
 
-echo "Last line of npm output: $PACKED_FILE"
+echo "npm pack output: $PACKED_FILE"
 
 # Validate the filename ends with .tgz and file exists
 if [[ ! "$PACKED_FILE" =~ \.tgz$ ]] || [ ! -f "$TEMP_DIR/$PACKED_FILE" ]; then
@@ -91,10 +89,12 @@ echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 # Create core package tarball
 echo "📦 Creating Core package tarball..."
 cd "$ROOT_DIR/packages/core"
-pnpm install --prod --ignore-scripts
-# Save full output for debugging, extract filename from last line
+npm install --production --ignore-scripts
+# Using npm for consistent bundling behavior
 NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" 2>&1)
 CORE_PACKED=$(echo "$NPM_OUTPUT" | tail -n 1)
+
+echo "npm pack output: $CORE_PACKED"
 
 # Validate the filename ends with .tgz and file exists
 if [[ ! "$CORE_PACKED" =~ \.tgz$ ]] || [ ! -f "$TEMP_DIR/$CORE_PACKED" ]; then
