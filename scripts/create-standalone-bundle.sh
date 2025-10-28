@@ -34,7 +34,7 @@ echo "🔧 Preparing bundled dependencies..."
 # Backup original package.json
 cp package.json package.json.backup
 
-# Create a node script to add bundledDependencies
+# Create a node script to add bundledDependencies and resolve workspace references
 node -e "
 const fs = require('fs');
 const pkg = require('./package.json');
@@ -51,11 +51,23 @@ pkg.bundledDependencies = [
   ...Object.keys(corePkg.dependencies || {})
 ];
 
+// IMPORTANT: Replace workspace: protocol with actual version for npm compatibility
+// npm doesn't understand pnpm's workspace: protocol
+if (pkg.dependencies['@zilliz/claude-context-core']) {
+  pkg.dependencies['@zilliz/claude-context-core'] = corePkg.version;
+}
+
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
 console.log('✅ Added bundledDependencies:', pkg.bundledDependencies.length, 'packages');
+console.log('✅ Resolved workspace references to versions');
 "
 
-# Install ALL dependencies (including core's dependencies) in node_modules
+# Manually install the core package from the workspace
+# npm doesn't understand workspace:* so we need to install it from the local path
+echo "📥 Installing core package from local workspace..."
+npm install ../core --install-links
+
+# Install ALL other dependencies (including core's dependencies) in node_modules
 echo "📥 Installing all dependencies locally with npm..."
 npm install --production --ignore-scripts
 
