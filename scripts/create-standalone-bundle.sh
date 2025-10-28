@@ -62,11 +62,17 @@ pnpm install --prod --ignore-scripts
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
 # Use npm pack instead of pnpm pack for better bundledDependencies support
-# npm pack outputs the tarball filename as the last line
-PACKED_FILE=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | tail -n 1)
-if [ -z "$PACKED_FILE" ] || [ ! -f "$TEMP_DIR/$PACKED_FILE" ]; then
+# Save full output for debugging, extract filename from last line
+NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" 2>&1)
+PACKED_FILE=$(echo "$NPM_OUTPUT" | tail -n 1)
+
+# Validate the filename ends with .tgz and file exists
+if [[ ! "$PACKED_FILE" =~ \.tgz$ ]] || [ ! -f "$TEMP_DIR/$PACKED_FILE" ]; then
     echo "❌ Error: npm pack failed or no .tgz file generated"
-    echo "Output: $PACKED_FILE"
+    echo "Expected .tgz file, got: $PACKED_FILE"
+    echo ""
+    echo "Full npm pack output:"
+    echo "$NPM_OUTPUT"
     exit 1
 fi
 MCP_TARBALL="$TEMP_DIR/$PACKED_FILE"
@@ -80,11 +86,17 @@ echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 echo "📦 Creating Core package tarball..."
 cd "$ROOT_DIR/packages/core"
 pnpm install --prod --ignore-scripts
-# npm pack outputs the tarball filename as the last line
-CORE_PACKED=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | tail -n 1)
-if [ -z "$CORE_PACKED" ] || [ ! -f "$TEMP_DIR/$CORE_PACKED" ]; then
+# Save full output for debugging, extract filename from last line
+NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" 2>&1)
+CORE_PACKED=$(echo "$NPM_OUTPUT" | tail -n 1)
+
+# Validate the filename ends with .tgz and file exists
+if [[ ! "$CORE_PACKED" =~ \.tgz$ ]] || [ ! -f "$TEMP_DIR/$CORE_PACKED" ]; then
     echo "❌ Error: npm pack failed for core package"
-    echo "Output: $CORE_PACKED"
+    echo "Expected .tgz file, got: $CORE_PACKED"
+    echo ""
+    echo "Full npm pack output:"
+    echo "$NPM_OUTPUT"
     exit 1
 fi
 CORE_TARBALL="$TEMP_DIR/$CORE_PACKED"
