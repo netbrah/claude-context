@@ -39,31 +39,5 @@
   "license": "MIT",
   "publishConfig": {
     "access": "public"
-  },
-  "bundledDependencies": [
-    "@zilliz/claude-context-core",
-    "@modelcontextprotocol/sdk",
-    "zod",
-    "@ganezdragon/tree-sitter-perl",
-    "@google/genai",
-    "@zilliz/milvus2-sdk-node",
-    "faiss-node",
-    "fs-extra",
-    "glob",
-    "langchain",
-    "ollama",
-    "openai",
-    "tree-sitter",
-    "tree-sitter-c-sharp",
-    "tree-sitter-cpp",
-    "tree-sitter-go",
-    "tree-sitter-java",
-    "tree-sitter-javascript",
-    "tree-sitter-python",
-    "tree-sitter-rust",
-    "tree-sitter-scala",
-    "tree-sitter-typescript",
-    "typescript",
-    "voyageai"
-  ]
+  }
 }
