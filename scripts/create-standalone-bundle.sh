@@ -86,8 +86,17 @@ CORE_PACK_FILE=$(basename "$CORE_PACK_FILE")
 # Go back to MCP package and install core from the tarball
 cd "$ROOT_DIR/packages/mcp"
 echo "📥 Installing core package from local tarball..."
-if ! npm install "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" --no-save; then
-    echo "❌ Failed to install core package from tarball"
+echo "🔍 Current directory: $(pwd)"
+echo "🔍 Tarball path: $TEMP_DIR/core-pkg/$CORE_PACK_FILE"
+
+npm install "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" --no-save
+NPM_EXIT_CODE=$?
+
+echo "📊 npm install exit code: $NPM_EXIT_CODE"
+echo "📂 Current directory after npm install: $(pwd)"
+
+if [ $NPM_EXIT_CODE -ne 0 ]; then
+    echo "❌ Failed to install core package from tarball (exit code: $NPM_EXIT_CODE)"
     echo "📋 Checking for npm log files..."
     LOG_FILE=$(find ~/.npm/_logs -name "*-debug-*.log" -type f 2>/dev/null | tail -n 1)
     if [ -n "$LOG_FILE" ] && [ -f "$LOG_FILE" ]; then
@@ -100,6 +109,8 @@ if ! npm install "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" --no-save; then
     fi
     exit 1
 fi
+
+echo "✅ Core package installed successfully"
 
 # Install ALL other dependencies (including core's dependencies) in node_modules
 echo "📥 Installing all other dependencies locally with npm..."

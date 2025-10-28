@@ -108,6 +108,17 @@ jobs:
           pnpm run build:mcp
           
           echo "✅ Packages built successfully"
+      
+      - name: Build Perl parser
+        run: |
+          echo "🔨 Building Perl parser native module..."
+          bash scripts/build-perl-parser.sh
+          
+          echo "✅ Perl parser built successfully"
+          if [ -f "prebuilds/linux-x64/tree_sitter_perl_binding.node" ]; then
+            echo "Perl parser binary:"
+            ls -lh prebuilds/linux-x64/tree_sitter_perl_binding.node
+          fi
 
       - name: Copy prebuilt binaries to expected location
         run: |
@@ -125,10 +136,9 @@ jobs:
         id: bundle
         run: |
           echo "📦 Creating complete standalone bundle..."
-          echo "   This includes building Perl parser if not already present"
           
-          # Use bundle:full to build Perl parser + create bundle
-          pnpm run bundle:full
+          # Run the bundle script directly with bash (not through pnpm)
+          bash scripts/create-standalone-bundle.sh
           
           # Find the created bundle
           BUNDLE_FILE=$(find bundle-output -name "claude-context-standalone-*.tar.gz" -type f | head -1)
