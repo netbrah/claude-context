@@ -67,12 +67,21 @@ echo "📦 Creating core package tarball first..."
 cd "$ROOT_DIR/packages/core"
 # No need to run npm install - package is already built by pnpm
 # Just pack the existing built files
-CORE_PACK_FILE=$(npm pack 2>&1 | tail -n 1)
+npm pack
+
+# Find the created tarball (npm creates it with the package name)
+CORE_PACK_FILE=$(find . -maxdepth 1 -name "zilliz-claude-context-core-*.tgz" -type f | head -n 1)
+if [ -z "$CORE_PACK_FILE" ]; then
+    echo "❌ Error: Core package tarball not found after npm pack"
+    ls -la
+    exit 1
+fi
 echo "Core package packed: $CORE_PACK_FILE"
 
 # Move core tarball to a temp location
 mkdir -p "$TEMP_DIR/core-pkg"
 mv "$CORE_PACK_FILE" "$TEMP_DIR/core-pkg/"
+CORE_PACK_FILE=$(basename "$CORE_PACK_FILE")
 
 # Go back to MCP package and install core from the tarball
 cd "$ROOT_DIR/packages/mcp"
