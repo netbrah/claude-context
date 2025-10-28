@@ -139,6 +139,7 @@ jobs:
           gh release create "${{ steps.branch.outputs.tag_name }}" \
             --title "Dev Build: ${{ steps.branch.outputs.branch }}" \
             --notes-file "${{ steps.changelog.outputs.changelog_file }}" \
+            --target "${{ github.sha }}" \
             --prerelease \
             dist/*.tgz
         env:
