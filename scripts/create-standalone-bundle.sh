@@ -183,6 +183,11 @@ else
     echo "   Bundle will be created without native module prebuilds"
 fi
 
+# Copy fast-install.sh for development workflow
+echo "📦 Including fast-install.sh for development..."
+cp "$ROOT_DIR/scripts/fast-install.sh" "$FINAL_BUNDLE/"
+chmod +x "$FINAL_BUNDLE/fast-install.sh"
+
 # Create installation script
 cat > "$FINAL_BUNDLE/install.sh" << 'INSTALL_SCRIPT'
 #!/bin/bash
@@ -359,6 +364,70 @@ FAISS_PREBUILD=/path/to/faiss.tar.gz PERL_PARSER_PREBUILD=/path/to/parser.node .
 
 **Note**: Bundled prebuilds are used automatically if present. Environment variables override bundled prebuilds.
 
+## Quick Start
+
+```bash
+# 1. Extract bundle
+tar -xzf claude-context-standalone-*.tar.gz
+cd claude-context-standalone
+
+# 2. Full Installation (production)
+./install.sh /your/install/path
+
+# 3. Fast Installation (development/testing)
+./fast-install.sh /your/test/path
+
+# 4. Configure MCP client (see below)
+
+# 5. Restart your MCP client (VSCode, Claude Desktop, etc.)
+```
+
+## Installation Scripts
+
+### `install.sh` - Full Production Installation
+
+Complete installation with all features:
+- Extracts packages
+- Creates node_modules structure with symlinks
+- Installs native module prebuilds (faiss-node, Perl parser)
+- Creates executable binary in `.bin/`
+- Ready for production use
+
+```bash
+# Default location (~/.mcp/claude-context)
+./install.sh
+
+# Custom location
+./install.sh /custom/path
+
+# With custom prebuilds
+FAISS_PREBUILD=/path/to/faiss.tar.gz ./install.sh
+```
+
+### `fast-install.sh` - Quick Development Setup
+
+Minimal installation for rapid testing:
+- Extracts packages only
+- Creates basic node_modules symlinks
+- **Skips prebuild installation** (faster)
+- **No .bin/ executables** (run directly with node)
+- Perfect for iterative development
+
+```bash
+# Default location (./fast-install-test/)
+./fast-install.sh
+
+# Custom location
+./fast-install.sh /tmp/test-mcp
+
+# Test directly
+node /tmp/test-mcp/mcp-package/dist/index.js
+```
+
+**When to use:**
+- `install.sh`: Production deployment, first-time setup, need native modules
+- `fast-install.sh`: Quick testing, development iteration, debugging
+
 ## What's Included
 
 ✅ **All JavaScript dependencies** - No npm install needed
@@ -399,7 +468,8 @@ After installation, add to your MCP config (e.g., `~/.config/Code/User/globalSto
 
 ```
 claude-context-standalone/
-├── install.sh                                    # Installation script
+├── install.sh                                    # Full production installation
+├── fast-install.sh                               # Quick dev installation (no prebuilds)
 ├── README.md                                     # This file
 ├── prebuilds/                                    # Prebuilt native modules (if included)
 │   ├── faiss-node-v0.5.1-napi-v8-linux-x64.tar.gz

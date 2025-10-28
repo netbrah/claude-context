@@ -1,13 +1,20 @@
 #!/bin/bash
 # File: scripts/fast-install.sh
 # Quick development installation script - extracts tarballs for fast testing
-# Skips symlink creation and prebuild installation for rapid iteration
+# Skips full installation overhead (no prebuilds, minimal setup) for rapid iteration
+#
+# Usage:
+#   ./fast-install.sh                    # Install to ./fast-install-test/
+#   ./fast-install.sh /custom/path       # Install to custom location
+#
+# Works in both:
+#   - Development: Run from repo root after creating bundle
+#   - Bundle: Run from extracted claude-context-standalone/ directory
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-INSTALL_DIR="${1:-$ROOT_DIR/fast-install-test}"
+INSTALL_DIR="${1:-$SCRIPT_DIR/fast-install-test}"
 
 echo "⚡ Fast Development Install"
 echo "📁 Installation directory: $INSTALL_DIR"
@@ -20,23 +27,33 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 mkdir -p "$INSTALL_DIR"
 
-# Check for bundle directory or tarballs
-BUNDLE_DIR="$ROOT_DIR/bundle-output/claude-context-standalone"
-
-if [ ! -d "$BUNDLE_DIR" ]; then
-    echo "❌ Bundle not found at: $BUNDLE_DIR"
+# Auto-detect where we're running from:
+# 1. Inside bundle (tarballs in same directory as script)
+# 2. Development repo (tarballs in bundle-output/)
+if ls "$SCRIPT_DIR"/zilliz-claude-context-*.tgz 1> /dev/null 2>&1; then
+    # Running from extracted bundle
+    TARBALL_DIR="$SCRIPT_DIR"
+    echo "📦 Running from extracted bundle"
+elif [ -d "$SCRIPT_DIR/../bundle-output/claude-context-standalone" ]; then
+    # Running from development repo
+    TARBALL_DIR="$SCRIPT_DIR/../bundle-output/claude-context-standalone"
+    echo "📦 Running from development repo"
+else
+    echo "❌ Cannot find tarballs!"
+    echo ""
+    echo "Expected locations:"
+    echo "  1. Same directory as script: $SCRIPT_DIR/*.tgz"
+    echo "  2. Bundle output: $SCRIPT_DIR/../bundle-output/claude-context-standalone/*.tgz"
     echo ""
     echo "Please run bundle creation first:"
     echo "  bash scripts/create-standalone-bundle.sh"
     exit 1
 fi
 
-echo "📦 Found bundle directory"
-
 # Copy tarballs to install directory
 echo "📋 Copying packages..."
-cp "$BUNDLE_DIR"/zilliz-claude-context-*.tgz "$INSTALL_DIR/" 2>/dev/null || {
-    echo "❌ No tarballs found in bundle directory"
+cp "$TARBALL_DIR"/zilliz-claude-context-*.tgz "$INSTALL_DIR/" 2>/dev/null || {
+    echo "❌ No tarballs found in: $TARBALL_DIR"
     exit 1
 }
 
