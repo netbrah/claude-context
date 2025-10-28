@@ -65,7 +65,8 @@ console.log('✅ Resolved workspace references to versions');
 # First, pack the core package to create a tarball
 echo "📦 Creating core package tarball first..."
 cd "$ROOT_DIR/packages/core"
-npm install --production --ignore-scripts
+# No need to run npm install - package is already built by pnpm
+# Just pack the existing built files
 CORE_PACK_FILE=$(npm pack 2>&1 | tail -n 1)
 echo "Core package packed: $CORE_PACK_FILE"
 
