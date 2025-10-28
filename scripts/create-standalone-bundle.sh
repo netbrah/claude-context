@@ -62,10 +62,10 @@ pnpm install --prod --ignore-scripts
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
 # Use npm pack instead of pnpm pack for better bundledDependencies support
-if ! PACKED_FILE=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | tee /dev/stderr | tail -n 1); then
-    echo "❌ Error: npm pack failed"
-    echo "Checking package.json..."
-    cat package.json | head -20
+# Filter out npm notice messages, only get the .tgz filename
+PACKED_FILE=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | grep '\.tgz$' | tail -n 1)
+if [ -z "$PACKED_FILE" ]; then
+    echo "❌ Error: npm pack failed or no .tgz file generated"
     exit 1
 fi
 MCP_TARBALL="$TEMP_DIR/$PACKED_FILE"
@@ -79,7 +79,12 @@ echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 echo "📦 Creating Core package tarball..."
 cd "$ROOT_DIR/packages/core"
 pnpm install --prod --ignore-scripts
-CORE_PACKED=$(npm pack --pack-destination "$TEMP_DIR" | tail -n 1)
+# Filter out npm notice messages, only get the .tgz filename
+CORE_PACKED=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | grep '\.tgz$' | tail -n 1)
+if [ -z "$CORE_PACKED" ]; then
+    echo "❌ Error: npm pack failed for core package"
+    exit 1
+fi
 CORE_TARBALL="$TEMP_DIR/$CORE_PACKED"
 echo "✅ Core bundle created: $(basename "$CORE_TARBALL")"
 
