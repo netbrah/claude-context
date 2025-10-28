@@ -61,7 +61,13 @@ pnpm install --prod --ignore-scripts
 
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
-PACKED_FILE=$(pnpm pack --pack-destination "$TEMP_DIR" | tail -n 1)
+# Use npm pack instead of pnpm pack for better bundledDependencies support
+if ! PACKED_FILE=$(npm pack --pack-destination "$TEMP_DIR" 2>&1 | tee /dev/stderr | tail -n 1); then
+    echo "❌ Error: npm pack failed"
+    echo "Checking package.json..."
+    cat package.json | head -20
+    exit 1
+fi
 MCP_TARBALL="$TEMP_DIR/$PACKED_FILE"
 
 # Restore original package.json
@@ -73,7 +79,7 @@ echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 echo "📦 Creating Core package tarball..."
 cd "$ROOT_DIR/packages/core"
 pnpm install --prod --ignore-scripts
-CORE_PACKED=$(pnpm pack --pack-destination "$TEMP_DIR" | tail -n 1)
+CORE_PACKED=$(npm pack --pack-destination "$TEMP_DIR" | tail -n 1)
 CORE_TARBALL="$TEMP_DIR/$CORE_PACKED"
 echo "✅ Core bundle created: $(basename "$CORE_TARBALL")"
 
