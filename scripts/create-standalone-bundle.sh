@@ -26,41 +26,6 @@ pnpm run build:mcp
 
 # Create bundled MCP package with ALL dependencies
 echo "📦 Creating bundled MCP package..."
-cd "$ROOT_DIR/packages/mcp"
-
-# Temporarily modify package.json to bundle ALL dependencies
-echo "🔧 Preparing bundled dependencies..."
-
-# Backup original package.json
-cp package.json package.json.backup
-
-# Create a node script to add bundledDependencies and resolve workspace references
-node -e "
-const fs = require('fs');
-const pkg = require('./package.json');
-
-// Get all dependencies from core package too
-const corePkg = require('../core/package.json');
-
-// Bundle everything
-pkg.bundledDependencies = [
-  '@zilliz/claude-context-core',
-  '@modelcontextprotocol/sdk',
-  'zod',
-  // Include all core dependencies
-  ...Object.keys(corePkg.dependencies || {})
-];
-
-// IMPORTANT: Replace workspace: protocol with actual version for npm compatibility
-// npm doesn't understand pnpm's workspace: protocol
-if (pkg.dependencies['@zilliz/claude-context-core']) {
-  pkg.dependencies['@zilliz/claude-context-core'] = corePkg.version;
-}
-
-fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-console.log('✅ Added bundledDependencies:', pkg.bundledDependencies.length, 'packages');
-console.log('✅ Resolved workspace references to versions');
-"
 
 # First, pack the core package to create a tarball
 echo "📦 Creating core package tarball first..."
@@ -83,19 +48,59 @@ mkdir -p "$TEMP_DIR/core-pkg"
 mv "$CORE_PACK_FILE" "$TEMP_DIR/core-pkg/"
 CORE_PACK_FILE=$(basename "$CORE_PACK_FILE")
 
-# Go back to MCP package and install all dependencies including core from tarball
-cd "$ROOT_DIR/packages/mcp"
-echo "📥 Installing all dependencies including core package from local tarball..."
-echo "🔍 Current directory: $(pwd)"
-echo "🔍 Tarball path: $TEMP_DIR/core-pkg/$CORE_PACK_FILE"
+# Create a completely isolated directory for npm operations (outside pnpm workspace)
+echo "🔧 Creating isolated npm workspace..."
+NPM_WORKSPACE="$TEMP_DIR/npm-workspace"
+mkdir -p "$NPM_WORKSPACE"
 
-# Install core package and all other dependencies in one go
-# This avoids pnpm workspace interference
-npm install "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" --production --ignore-scripts --legacy-peer-deps
+# Copy MCP package files to isolated workspace
+echo "📋 Copying MCP package to isolated workspace..."
+cp "$ROOT_DIR/packages/mcp/package.json" "$NPM_WORKSPACE/"
+cp "$ROOT_DIR/packages/mcp/package-lock.json" "$NPM_WORKSPACE/" 2>/dev/null || true
+cp -r "$ROOT_DIR/packages/mcp/dist" "$NPM_WORKSPACE/" 2>/dev/null || true
+
+# Also copy the core tarball to the isolated workspace
+cp "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" "$NPM_WORKSPACE/"
+
+cd "$NPM_WORKSPACE"
+
+# Modify package.json to add bundledDependencies and resolve workspace references
+echo "� Preparing bundled dependencies in isolated workspace..."
+node -e "
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+
+// Get all dependencies from core package
+const corePkg = JSON.parse(require('child_process').execSync('tar -xOf $CORE_PACK_FILE package/package.json').toString());
+
+// Bundle everything
+pkg.bundledDependencies = [
+  '@zilliz/claude-context-core',
+  '@modelcontextprotocol/sdk',
+  'zod',
+  // Include all core dependencies
+  ...Object.keys(corePkg.dependencies || {})
+];
+
+// IMPORTANT: Replace workspace: protocol with actual version for npm compatibility
+if (pkg.dependencies['@zilliz/claude-context-core']) {
+  pkg.dependencies['@zilliz/claude-context-core'] = corePkg.version;
+}
+
+fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+console.log('✅ Added bundledDependencies:', pkg.bundledDependencies.length, 'packages');
+console.log('✅ Resolved workspace references to versions');
+" CORE_PACK_FILE="$CORE_PACK_FILE"
+
+# Now install all dependencies in this isolated workspace
+echo "📥 Installing all dependencies in isolated npm workspace..."
+echo "🔍 Current directory: $(pwd)"
+echo "🔍 Core tarball: $CORE_PACK_FILE"
+
+npm install "./$CORE_PACK_FILE" --production --ignore-scripts --legacy-peer-deps
 NPM_EXIT_CODE=$?
 
 echo "📊 npm install exit code: $NPM_EXIT_CODE"
-echo "📂 Current directory after npm install: $(pwd)"
 
 if [ $NPM_EXIT_CODE -ne 0 ]; then
     echo "❌ Failed to install dependencies (exit code: $NPM_EXIT_CODE)"
@@ -112,11 +117,11 @@ if [ $NPM_EXIT_CODE -ne 0 ]; then
     exit 1
 fi
 
-echo "✅ All dependencies installed successfully"
+echo "✅ All dependencies installed successfully in isolated workspace"
 
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
-# Using npm for both install and pack for consistent bundledDependencies handling
+# We're still in the isolated npm workspace
 npm pack --pack-destination "$TEMP_DIR"
 
 # Find the created tarball (npm creates it with the package name)
@@ -132,8 +137,7 @@ fi
 MCP_TARBALL="$PACKED_FILE"
 echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 
-# Restore original package.json
-mv package.json.backup package.json
+# No need to restore package.json - we're working in isolated directory
 
 # Core package tarball was already created earlier - just locate it
 echo "📦 Locating Core package tarball..."
