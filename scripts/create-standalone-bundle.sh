@@ -203,6 +203,12 @@ mkdir -p "$INSTALL_DIR"
 echo "📦 Copying packages..."
 cp "$SCRIPT_DIR"/zilliz-claude-context-*.tgz "$INSTALL_DIR/" 2>/dev/null || true
 
+# Copy prebuilt binaries if they exist
+if [ -d "$SCRIPT_DIR/prebuilds" ]; then
+    echo "📦 Copying prebuilt binaries..."
+    cp -r "$SCRIPT_DIR/prebuilds" "$INSTALL_DIR/"
+fi
+
 cd "$INSTALL_DIR"
 
 # Extract core package
@@ -244,9 +250,9 @@ chmod +x node_modules/.bin/claude-context-mcp
 # Handle native dependencies (faiss-node)
 echo "🔧 Installing native dependencies..."
 
-# Auto-detect bundled prebuilds
-BUNDLED_FAISS="$SCRIPT_DIR/prebuilds/faiss-node-v0.5.1-napi-v8-linux-x64.tar.gz"
-BUNDLED_PERL="$SCRIPT_DIR/prebuilds/tree_sitter_perl_binding.node"
+# Auto-detect bundled prebuilds (in extracted install directory)
+BUNDLED_FAISS="$INSTALL_DIR/prebuilds/faiss-node-v0.5.1-napi-v8-linux-x64.tar.gz"
+BUNDLED_PERL="$INSTALL_DIR/prebuilds/tree_sitter_perl_binding.node"
 
 # Determine faiss-node prebuild source (bundled > env var)
 FAISS_SOURCE=""
