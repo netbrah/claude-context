@@ -62,9 +62,12 @@ pnpm install --prod --ignore-scripts
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
 # Use npm pack instead of pnpm pack for better bundledDependencies support
-# Save full output for debugging, extract filename from last line
-NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" 2>&1)
+# Add --loglevel=verbose to see what's happening
+echo "Running npm pack with verbose logging..."
+NPM_OUTPUT=$(npm pack --pack-destination "$TEMP_DIR" --loglevel=verbose 2>&1)
 PACKED_FILE=$(echo "$NPM_OUTPUT" | tail -n 1)
+
+echo "Last line of npm output: $PACKED_FILE"
 
 # Validate the filename ends with .tgz and file exists
 if [[ ! "$PACKED_FILE" =~ \.tgz$ ]] || [ ! -f "$TEMP_DIR/$PACKED_FILE" ]; then
@@ -73,6 +76,9 @@ if [[ ! "$PACKED_FILE" =~ \.tgz$ ]] || [ ! -f "$TEMP_DIR/$PACKED_FILE" ]; then
     echo ""
     echo "Full npm pack output:"
     echo "$NPM_OUTPUT"
+    echo ""
+    echo "Files in temp directory:"
+    ls -la "$TEMP_DIR"
     exit 1
 fi
 MCP_TARBALL="$TEMP_DIR/$PACKED_FILE"
