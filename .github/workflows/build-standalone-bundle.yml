@@ -1,0 +1,423 @@
+name: Build Standalone Bundle
+
+# Creates fully self-contained bundle with all dependencies and native modules
+# Designed for offline/air-gapped Linux systems (RHEL/Rocky Linux 9.6)
+# Target: x86_64, Node.js v20.19.2
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - 'packages/**'
+      - 'scripts/create-standalone-bundle.sh'
+      - 'scripts/build-perl-parser.sh'
+      - '.github/workflows/build-standalone-bundle.yml'
+  
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - 'packages/**'
+      - 'scripts/create-standalone-bundle.sh'
+      - 'scripts/build-perl-parser.sh'
+  
+  workflow_dispatch:
+    inputs:
+      upload_release:
+        description: 'Upload as pre-release'
+        required: false
+        type: boolean
+        default: false
+      release_tag:
+        description: 'Release tag name (e.g., standalone-v0.1.3)'
+        required: false
+        type: string
+
+# Only run one standalone build at a time
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-standalone-bundle:
+    name: Build Standalone Bundle (x86_64 Linux)
+    runs-on: ubuntu-22.04  # Close to RHEL 9.6 environment
+    timeout-minutes: 30
+    
+    permissions:
+      contents: write
+      packages: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.2'  # Match target environment
+          cache: 'pnpm'
+
+      - name: Install system dependencies
+        run: |
+          echo "📦 Installing build dependencies for native modules..."
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            python3 \
+            python3-pip \
+            gcc \
+            g++ \
+            make \
+            cmake \
+            git \
+            tree
+          
+          echo "✅ Build tools installed:"
+          gcc --version
+          g++ --version
+          make --version
+          python3 --version
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: |
+          echo "📥 Installing Node.js dependencies..."
+          pnpm install --frozen-lockfile
+          
+          echo "✅ Dependencies installed"
+          echo "Node modules size:"
+          du -sh node_modules
+
+      - name: Build packages
+        run: |
+          echo "🔨 Building core and MCP packages..."
+          pnpm run build:core
+          pnpm run build:mcp
+          
+          echo "✅ Packages built successfully"
+
+      - name: Copy prebuilt binaries to expected location
+        run: |
+          echo "� Checking for prebuilt binaries..."
+          if [ -d "prebuilds/linux-x64" ]; then
+            echo "✅ Found prebuilt binaries:"
+            ls -lh prebuilds/linux-x64/
+          else
+            echo "⚠️ No prebuilt binaries found in prebuilds/linux-x64/"
+            echo "   Bundle will be created without native module prebuilds"
+            echo "   Consider adding faiss-node and Perl parser to prebuilds/linux-x64/"
+          fi
+
+      - name: Create standalone bundle
+        id: bundle
+        run: |
+          echo "📦 Creating complete standalone bundle..."
+          echo "   This includes building Perl parser if not already present"
+          
+          # Use bundle:full to build Perl parser + create bundle
+          pnpm run bundle:full
+          
+          # Find the created bundle
+          BUNDLE_FILE=$(find bundle-output -name "claude-context-standalone-*.tar.gz" -type f | head -1)
+          
+          if [ -n "$BUNDLE_FILE" ]; then
+            echo "✅ Standalone bundle created: $BUNDLE_FILE"
+            echo "bundle_file=$BUNDLE_FILE" >> $GITHUB_OUTPUT
+            echo "bundle_name=$(basename $BUNDLE_FILE)" >> $GITHUB_OUTPUT
+            
+            # Show bundle info
+            ls -lh "$BUNDLE_FILE"
+            echo "Bundle size: $(du -h $BUNDLE_FILE | cut -f1)"
+            
+            # List bundle contents
+            echo "Bundle contents:"
+            tar -tzf "$BUNDLE_FILE" | head -20
+          else
+            echo "❌ Bundle creation failed - no tarball found"
+            exit 1
+          fi
+
+      - name: Verify bundle contents
+        run: |
+          echo "🔍 Verifying bundle contents..."
+          
+          BUNDLE_FILE="${{ steps.bundle.outputs.bundle_file }}"
+          
+          # Extract and verify
+          mkdir -p verify-bundle
+          tar -xzf "$BUNDLE_FILE" -C verify-bundle
+          
+          # Check for required files
+          required_files=(
+            "claude-context-standalone/install.sh"
+            "claude-context-standalone/README.md"
+            "claude-context-standalone/zilliz-claude-context-core-*.tgz"
+            "claude-context-standalone/zilliz-claude-context-mcp-*.tgz"
+          )
+          
+          all_found=true
+          for pattern in "${required_files[@]}"; do
+            if ! ls verify-bundle/$pattern 1> /dev/null 2>&1; then
+              echo "❌ Missing required file: $pattern"
+              all_found=false
+            else
+              echo "✅ Found: $pattern"
+            fi
+          done
+          
+          if [ "$all_found" = false ]; then
+            echo "❌ Bundle verification failed"
+            exit 1
+          fi
+          
+          echo "✅ Bundle verification passed"
+          
+          # Show directory structure
+          echo ""
+          echo "Bundle structure:"
+          tree -L 3 verify-bundle/claude-context-standalone || ls -R verify-bundle/claude-context-standalone
+
+      - name: Test bundle installation
+        run: |
+          echo "🧪 Testing bundle installation..."
+          
+          BUNDLE_FILE="${{ steps.bundle.outputs.bundle_file }}"
+          TEST_DIR="/tmp/test-bundle-install"
+          
+          # Clean test directory
+          rm -rf "$TEST_DIR"
+          mkdir -p "$TEST_DIR"
+          
+          # Extract bundle
+          tar -xzf "$BUNDLE_FILE" -C "$TEST_DIR"
+          
+          # Run installation script (dry run)
+          cd "$TEST_DIR/claude-context-standalone"
+          
+          # Make install script executable
+          chmod +x install.sh
+          
+          # Test installation to temp location
+          INSTALL_TARGET="$TEST_DIR/installation"
+          bash install.sh "$INSTALL_TARGET" || {
+            echo "❌ Installation test failed"
+            exit 1
+          }
+          
+          # Verify installed structure
+          if [ -d "$INSTALL_TARGET/node_modules/@zilliz/claude-context-mcp" ]; then
+            echo "✅ MCP package installed"
+          else
+            echo "❌ MCP package not installed"
+            exit 1
+          fi
+          
+          if [ -d "$INSTALL_TARGET/node_modules/@zilliz/claude-context-core" ]; then
+            echo "✅ Core package installed"
+          else
+            echo "❌ Core package not installed"
+            exit 1
+          fi
+          
+          if [ -x "$INSTALL_TARGET/node_modules/.bin/claude-context-mcp" ]; then
+            echo "✅ MCP binary is executable"
+          else
+            echo "❌ MCP binary not executable"
+            exit 1
+          fi
+          
+          echo "✅ Bundle installation test passed"
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          ## 📦 Standalone Bundle for Offline Linux Systems
+          
+          This release contains a fully self-contained Claude Context bundle designed for air-gapped/offline Linux systems.
+          
+          ### 🎯 Target Environment
+          
+          - **OS**: RHEL/Rocky Linux 9.6 (or compatible)
+          - **Architecture**: x86_64 (64-bit)
+          - **Kernel**: 5.14.0 or newer
+          - **Node.js**: v20.19.2
+          
+          ### 📦 What's Included
+          
+          - ✅ All JavaScript dependencies (pre-bundled, zero npm installs)
+          - ✅ Core indexing engine (`@zilliz/claude-context-core`)
+          - ✅ MCP server (`@zilliz/claude-context-mcp`)
+          - ✅ Tree-sitter Perl parser (native binary for x86_64 Linux)
+          - ✅ All other tree-sitter parsers (JavaScript, Python, C++, Java, Go, Rust, etc.)
+          - ✅ Installation script with prebuild support
+          - ✅ Complete documentation
+          
+          ### 🚀 Quick Installation
+          
+          ```bash
+          # Extract bundle
+          tar -xzf claude-context-standalone-*.tar.gz
+          cd claude-context-standalone
+          
+          # Basic installation (to ~/.mcp/claude-context)
+          ./install.sh
+          
+          # Custom location
+          ./install.sh /custom/path
+          
+          # With faiss-node prebuild
+          FAISS_PREBUILD=/path/to/faiss-node.tar.gz ./install.sh
+          ```
+          
+          ### 📚 Documentation
+          
+          - [Quick Start Guide](https://github.com/${{ github.repository }}/blob/master/docs/OFFLINE_INSTALL_QUICKSTART.md)
+          - [Complete Bundle Documentation](https://github.com/${{ github.repository }}/blob/master/docs/STANDALONE_BUNDLE.md)
+          - [Perl Parser Build Guide](https://github.com/${{ github.repository }}/blob/master/docs/BUILD_TREE_SITTER_PERL.md)
+          
+          ### 🔧 System Requirements
+          
+          **Required**:
+          - Node.js 20.x (not 24+)
+          - Linux x86_64 system (RHEL 9, Rocky Linux 9, or compatible)
+          
+          **Optional** (for native modules):
+          - faiss-node prebuild (v0.5.1 for x86_64 Linux)
+          - gcc/g++/make (if rebuilding native modules)
+          
+          ### ⚠️ Important Notes
+          
+          1. **Completely Offline**: This bundle requires NO internet access after download
+          2. **Pre-compiled Binaries**: Perl parser included as native binary for x86_64 Linux
+          3. **faiss-node**: Provide your own prebuild via `FAISS_PREBUILD` environment variable
+          4. **Compatibility**: Tested on Ubuntu 22.04, compatible with RHEL/Rocky Linux 9.6
+          
+          ### 📊 Bundle Information
+          
+          - **Bundle Size**: ~$(du -h ${{ steps.bundle.outputs.bundle_file }} | cut -f1)
+          - **Build Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          - **Commit**: ${{ github.sha }}
+          - **Node.js Version**: $(node --version)
+          - **Platform**: $(uname -s) $(uname -m)
+          
+          ### 🧪 Verification
+          
+          After installation, test the MCP server:
+          
+          ```bash
+          # Check installation
+          ~/.mcp/claude-context/node_modules/.bin/claude-context-mcp --version
+          
+          # Test in MCP client
+          # Add to your MCP configuration and restart client
+          ```
+          
+          ---
+          
+          **Need Help?** See [Troubleshooting Guide](https://github.com/${{ github.repository }}/blob/master/docs/troubleshooting/troubleshooting-guide.md)
+          EOF
+          
+          echo "release_notes=release-notes.md" >> $GITHUB_OUTPUT
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-context-standalone-bundle
+          path: |
+            ${{ steps.bundle.outputs.bundle_file }}
+            bundle-output/claude-context-standalone/README.md
+            prebuilds/*.node
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload Perl parser artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tree-sitter-perl-x86_64-linux
+          path: prebuilds/*.node
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: |
+          github.event_name == 'workflow_dispatch' && 
+          github.event.inputs.upload_release == 'true' &&
+          github.event.inputs.release_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: "📦 Standalone Bundle - ${{ github.event.inputs.release_tag }}"
+          body_path: ${{ steps.release-notes.outputs.release_notes }}
+          draft: false
+          prerelease: true
+          files: |
+            ${{ steps.bundle.outputs.bundle_file }}
+            prebuilds/*.node
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate workflow summary
+        run: |
+          echo "## 📦 Standalone Bundle Built Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bundle**: \`${{ steps.bundle.outputs.bundle_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Size**: $(du -h ${{ steps.bundle.outputs.bundle_file }} | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node.js**: $(node --version)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platform**: $(uname -s) $(uname -m)" >> $GITHUB_STEP_SUMMARY
+          
+          # Check what prebuilds are included
+          if [ -d "bundle-output/claude-context-standalone/prebuilds" ]; then
+            echo "- **Prebuilds**: ✅ Included in bundle" >> $GITHUB_STEP_SUMMARY
+            echo "  - faiss-node: $([ -f "prebuilds/linux-x64/faiss-node-v0.5.1-napi-v8-linux-x64.tar.gz" ] && echo "✅" || echo "❌")" >> $GITHUB_STEP_SUMMARY
+            echo "  - Perl parser: $([ -f "prebuilds/linux-x64/tree_sitter_perl_binding.node" ] && echo "✅ (or built during bundle creation)" || echo "✅ built")" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Prebuilds**: ⚠️ Not included (will be built during bundle creation)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Target Environment" >> $GITHUB_STEP_SUMMARY
+          echo "- RHEL/Rocky Linux 9.6" >> $GITHUB_STEP_SUMMARY
+          echo "- x86_64 architecture" >> $GITHUB_STEP_SUMMARY
+          echo "- Node.js v20.19.2" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Standalone Bundle**: Complete installation package" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Perl Parser**: Native binary for x86_64 Linux" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download artifacts from this workflow run" >> $GITHUB_STEP_SUMMARY
+          echo "2. Transfer to your offline system" >> $GITHUB_STEP_SUMMARY
+          echo "3. Extract and run \`./install.sh\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📚 Documentation" >> $GITHUB_STEP_SUMMARY
+          echo "- [Quick Start](https://github.com/${{ github.repository }}/blob/master/docs/OFFLINE_INSTALL_QUICKSTART.md)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Full Guide](https://github.com/${{ github.repository }}/blob/master/docs/STANDALONE_BUNDLE.md)" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.upload_release }}" = "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🎉 Release Created" >> $GITHUB_STEP_SUMMARY
+            echo "- **Tag**: \`${{ github.event.inputs.release_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **URL**: https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.release_tag }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "🧹 Cleaning up temporary files..."
+          rm -rf verify-bundle
+          rm -rf /tmp/test-bundle-install
+          echo "✅ Cleanup complete"

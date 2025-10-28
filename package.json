@@ -28,7 +28,10 @@
         "pack": "pnpm pack --pack-destination ./dist && mv ./dist/claude-context-*.tgz ./dist/claude-context.tgz",
         "pack:core": "pnpm run build:core && pnpm --filter @zilliz/claude-context-core pack",
         "pack:mcp": "pnpm run build:mcp && pnpm --filter @zilliz/claude-context-mcp pack",
-        "pack:all": "pnpm run pack:core && pnpm run pack:mcp"
+        "pack:all": "pnpm run pack:core && pnpm run pack:mcp",
+        "bundle:standalone": "bash scripts/create-standalone-bundle.sh",
+        "build:perl-parser": "bash scripts/build-perl-parser.sh",
+        "bundle:full": "bash scripts/build-perl-parser.sh && bash scripts/create-standalone-bundle.sh"
     },
     "devDependencies": {
         "@eslint/js": "^9.38.0",

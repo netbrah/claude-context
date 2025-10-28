@@ -89,3 +89,10 @@ evaluation/retrieval_results*
 
 # Package tarballs
 *.tgz
+
+# Prebuilt native modules (large binaries)
+prebuilds/**/*.tar.gz
+prebuilds/**/*.node
+
+# Bundle output directory
+bundle-output/

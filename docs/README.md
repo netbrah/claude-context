@@ -9,6 +9,8 @@ Welcome to the Claude Context documentation! Claude Context is a powerful tool t
 - [🛠️ Prerequisites](getting-started/prerequisites.md) - What you need before starting
 - [🔍 Environment Variables](getting-started/environment-variables.md) - How to configure environment variables for MCP
 - [⚡ Quick Start Guide](getting-started/quick-start.md) - Get up and running in 1 minutes
+- [📦 Offline Installation](OFFLINE_INSTALL_QUICKSTART.md) - Air-gapped/offline installation guide
+- [🎁 Standalone Bundle](STANDALONE_BUNDLE.md) - Complete offline bundle documentation
 
 
 ### Components
@@ -23,6 +25,8 @@ Welcome to the Claude Context documentation! Claude Context is a powerful tool t
 
 ### Development
 - [Testing and Benchmarking Guide](development/testing-and-benchmarking.md) - How to run tests and benchmarks
+- [Build Tree-Sitter Perl](BUILD_TREE_SITTER_PERL.md) - Building Perl parser natively
+- [Standalone Bundle Workflows](STANDALONE_BUNDLE_WORKFLOWS.md) - CI/CD for offline bundles
 
 ### Troubleshooting
 - [❓ FAQ](troubleshooting/faq.md) - Frequently asked questions
