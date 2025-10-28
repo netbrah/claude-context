@@ -57,7 +57,7 @@ console.log('✅ Added bundledDependencies:', pkg.bundledDependencies.length, 'p
 
 # Install ALL dependencies (including core's dependencies) in node_modules
 echo "📥 Installing all dependencies locally..."
-pnpm install --prod --ignore-scripts --no-interactive
+pnpm install --prod --ignore-scripts
 
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
@@ -72,7 +72,7 @@ echo "✅ MCP bundle created: $(basename "$MCP_TARBALL")"
 # Create core package tarball
 echo "📦 Creating Core package tarball..."
 cd "$ROOT_DIR/packages/core"
-pnpm install --prod --ignore-scripts --no-interactive
+pnpm install --prod --ignore-scripts
 CORE_PACKED=$(pnpm pack --pack-destination "$TEMP_DIR" | tail -n 1)
 CORE_TARBALL="$TEMP_DIR/$CORE_PACKED"
 echo "✅ Core bundle created: $(basename "$CORE_TARBALL")"

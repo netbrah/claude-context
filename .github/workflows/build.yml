@@ -75,7 +75,7 @@ jobs:
   cross-platform:
     name: Cross-Platform Build (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     
     strategy:
       fail-fast: false
@@ -104,7 +104,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --reporter=append-only
 
       - name: Build core and MCP packages
         run: |
