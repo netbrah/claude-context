@@ -77,11 +77,37 @@ mv "$CORE_PACK_FILE" "$TEMP_DIR/core-pkg/"
 # Go back to MCP package and install core from the tarball
 cd "$ROOT_DIR/packages/mcp"
 echo "📥 Installing core package from local tarball..."
-npm install "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" --no-save
+if ! npm install "$TEMP_DIR/core-pkg/$CORE_PACK_FILE" --no-save; then
+    echo "❌ Failed to install core package from tarball"
+    echo "📋 Checking for npm log files..."
+    LOG_FILE=$(find ~/.npm/_logs -name "*-debug-*.log" -type f 2>/dev/null | tail -n 1)
+    if [ -n "$LOG_FILE" ] && [ -f "$LOG_FILE" ]; then
+        echo "📄 Contents of npm log: $LOG_FILE"
+        echo "════════════════════════════════════════════════════════════════"
+        cat "$LOG_FILE"
+        echo "════════════════════════════════════════════════════════════════"
+    else
+        echo "⚠️ No npm log file found"
+    fi
+    exit 1
+fi
 
 # Install ALL other dependencies (including core's dependencies) in node_modules
 echo "📥 Installing all other dependencies locally with npm..."
-npm install --production --ignore-scripts
+if ! npm install --production --ignore-scripts; then
+    echo "❌ Failed to install dependencies"
+    echo "📋 Checking for npm log files..."
+    LOG_FILE=$(find ~/.npm/_logs -name "*-debug-*.log" -type f 2>/dev/null | tail -n 1)
+    if [ -n "$LOG_FILE" ] && [ -f "$LOG_FILE" ]; then
+        echo "📄 Contents of npm log: $LOG_FILE"
+        echo "════════════════════════════════════════════════════════════════"
+        cat "$LOG_FILE"
+        echo "════════════════════════════════════════════════════════════════"
+    else
+        echo "⚠️ No npm log file found"
+    fi
+    exit 1
+fi
 
 # Pack the MCP package with bundled dependencies
 echo "📦 Creating MCP tarball with bundled dependencies..."
