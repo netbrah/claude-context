@@ -63,6 +63,7 @@ Claude Context supports a global configuration file at `~/.context/.env` to simp
 | `SPLITTER_TYPE` | Code splitter type: `ast`, `langchain` | `ast` |
 | `CUSTOM_EXTENSIONS` | Additional file extensions to include (comma-separated, e.g., `.vue,.svelte,.astro`) | None |
 | `CUSTOM_IGNORE_PATTERNS` | Additional ignore patterns (comma-separated, e.g., `temp/**,*.backup,private/**`) | None |
+| `SNAPSHOT_PATH` | Custom path for snapshot file. Supports absolute or relative paths. Useful when default location (`~/.context/mcp-codebase-snapshot.json`) is on a shared network drive | `~/.context/mcp-codebase-snapshot.json` |
 
 ## 🚀 Quick Setup
 
@@ -96,6 +97,38 @@ claude mcp add claude-context -- npx @zilliz/claude-context-mcp@latest
     }
   }
 }
+```
+
+### 3. Custom Snapshot Path (Optional)
+
+If your home directory (`~/.context/`) is on a shared network drive causing performance issues, you can configure a custom snapshot path:
+
+**In `~/.context/.env`:**
+```bash
+# Use absolute path on local disk
+SNAPSHOT_PATH=/milvus/mcp-codebase-snapshot.json
+```
+
+**Or in MCP client configuration:**
+
+**Cursor/Windsurf/Others:**
+```json
+{
+  "mcpServers": {
+    "claude-context": {
+      "command": "npx",
+      "args": ["-y", "@zilliz/claude-context-mcp@latest"],
+      "env": {
+        "SNAPSHOT_PATH": "/milvus/mcp-codebase-snapshot.json"
+      }
+    }
+  }
+}
+```
+
+**Claude Code:**
+```bash
+claude mcp add claude-context --env SNAPSHOT_PATH=/milvus/mcp-codebase-snapshot.json -- npx @zilliz/claude-context-mcp@latest
 ```
 
 ## 📚 Additional Information

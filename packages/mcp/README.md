@@ -183,6 +183,20 @@ CUSTOM_IGNORE_PATTERNS=temp/**,*.backup,private/**,uploads/**
 
 These settings work in combination with tool parameters - patterns from both sources will be merged together.
 
+#### Custom Snapshot Path (Optional)
+
+By default, Claude Context saves the codebase snapshot to `~/.context/mcp-codebase-snapshot.json`. If your home directory is on a shared network drive causing performance issues, you can configure a custom snapshot path:
+
+```bash
+# Use an absolute path on a local disk
+SNAPSHOT_PATH=/milvus/mcp-codebase-snapshot.json
+
+# Or use a relative path (relative to the working directory)
+SNAPSHOT_PATH=./local-snapshot.json
+```
+
+You can also set this in your MCP client configuration's `env` section (see examples in the [Usage with MCP Clients](#usage-with-mcp-clients) section below).
+
 ## Usage with MCP Clients
 
 <details>
@@ -348,6 +362,26 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
         "EMBEDDING_MODEL": "nomic-embed-text",
         "OLLAMA_HOST": "http://127.0.0.1:11434",
         "MILVUS_TOKEN": "your-zilliz-cloud-api-key"
+      }
+    }
+  }
+}
+```
+
+**Custom Snapshot Path (for shared network drives):**
+
+If your home directory is on a shared network drive, you can specify a custom snapshot path for better performance:
+
+```json
+{
+  "mcpServers": {
+    "claude-context": {
+      "command": "npx",
+      "args": ["-y", "@zilliz/claude-context-mcp@latest"],
+      "env": {
+        "OPENAI_API_KEY": "your-openai-api-key",
+        "MILVUS_TOKEN": "your-zilliz-cloud-api-key",
+        "SNAPSHOT_PATH": "/milvus/mcp-codebase-snapshot.json"
       }
     }
   }
