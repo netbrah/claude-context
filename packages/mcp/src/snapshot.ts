@@ -23,9 +23,14 @@ export class SnapshotManager {
         // Priority: custom path > default path
         if (customSnapshotPath) {
             // Support both absolute and relative paths
-            this.snapshotFilePath = path.isAbsolute(customSnapshotPath) 
+            const resolvedPath = path.isAbsolute(customSnapshotPath) 
                 ? customSnapshotPath 
                 : path.resolve(process.cwd(), customSnapshotPath);
+            
+            // Normalize the path to remove any '..' or '.' segments
+            const normalizedPath = path.normalize(resolvedPath);
+            
+            this.snapshotFilePath = normalizedPath;
             console.log(`[SNAPSHOT-DEBUG] Using custom snapshot path: ${this.snapshotFilePath}`);
         } else {
             this.snapshotFilePath = path.join(os.homedir(), '.context', 'mcp-codebase-snapshot.json');
