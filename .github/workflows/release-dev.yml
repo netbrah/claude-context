@@ -1,0 +1,142 @@
+name: Release (Dev)
+
+# Development release workflow
+# Triggered by pushing dev-* tags (e.g., dev-v1.0.0)
+# Creates pre-releases with artifacts for testing
+
+on:
+  push:
+    tags:
+      - 'dev-*'
+
+jobs:
+  release-dev:
+    name: Create Dev Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      packages: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test:core
+        continue-on-error: true
+
+      - name: Run benchmarks
+        run: |
+          pnpm benchmark
+          pnpm benchmark:cpp
+
+      - name: Create package tarballs
+        run: |
+          pnpm --filter @zilliz/claude-context-core pack
+          pnpm --filter @zilliz/claude-context-mcp pack
+          mv packages/core/zilliz-claude-context-core-*.tgz ./
+          mv packages/mcp/zilliz-claude-context-mcp-*.tgz ./
+
+      - name: Package VSCode extension
+        run: |
+          pnpm --filter semanticcodesearch run webpack
+          pnpm --filter semanticcodesearch run package
+
+      - name: Find VSCode package
+        id: find-vsix
+        run: |
+          VSIX_FILE=$(find packages/vscode-extension -name "*.vsix" -type f | head -1)
+          if [ -n "$VSIX_FILE" ]; then
+            echo "vsix_path=$VSIX_FILE" >> $GITHUB_OUTPUT
+            echo "Found VSIX: $VSIX_FILE"
+          else
+            echo "No VSIX file found"
+          fi
+
+      - name: Generate release notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          ## Development Release ${{ github.ref_name }}
+          
+          This is a **development/testing release**. Use at your own risk.
+          
+          ### 📦 Included Artifacts
+          
+          - **Core Package** (`zilliz-claude-context-core-*.tgz`)
+            - Install: `npm install ./zilliz-claude-context-core-*.tgz`
+          
+          - **MCP Package** (`zilliz-claude-context-mcp-*.tgz`)
+            - Install: `npm install ./zilliz-claude-context-mcp-*.tgz`
+          
+          - **VSCode Extension** (`semanticcodesearch-*.vsix`)
+            - Install: Open VSCode → Extensions → "..." menu → Install from VSIX
+          
+          - **Build Benchmark** (`build-benchmark.json`)
+            - Performance metrics for this build
+          
+          - **C++ Parser Benchmark** (`cpp-benchmark-results.json`)
+            - AST parser performance metrics
+          
+          ### 🚀 Quick Start
+          
+          Download the artifacts above and install them locally for testing.
+          
+          ### 📊 Build Info
+          
+          - **Tag**: ${{ github.ref_name }}
+          - **Commit**: ${{ github.sha }}
+          - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          EOF
+
+      - name: Create GitHub Pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            zilliz-claude-context-core-*.tgz
+            zilliz-claude-context-mcp-*.tgz
+            packages/vscode-extension/*.vsix
+            build-benchmark.json
+            cpp-benchmark-results.json
+          body_path: release-notes.md
+          draft: false
+          prerelease: true
+          name: "🚧 Dev Release ${{ github.ref_name }}"
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate workflow summary
+        run: |
+          echo "## Development Release Created 🚧" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts Available" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Core package tarball" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ MCP package tarball" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.find-vsix.outputs.vsix_path }}" ]; then
+            echo "- ✅ VSCode extension VSIX" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ VSCode extension VSIX (not found)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- ✅ Build benchmark results" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ C++ parser benchmark results" >> $GITHUB_STEP_SUMMARY

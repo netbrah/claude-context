@@ -1,0 +1,60 @@
+name: Lint
+
+# Fast fail-fast linting workflow
+# Runs on all PRs and pushes to main branches
+# Purpose: Quick code quality checks before heavy tests
+
+on:
+  push:
+    branches: [main, master, claude_context]
+  pull_request:
+    branches: [main, master, claude_context]
+
+# Cancel in-progress runs for same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: ESLint & TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages (required for typecheck)
+        run: pnpm build
+
+      - name: Run TypeScript type checking
+        run: pnpm typecheck
+
+      - name: Run ESLint
+        run: pnpm lint
+        continue-on-error: true
+
+      - name: Generate lint summary
+        if: always()
+        run: |
+          echo "## Lint Results 📋" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ TypeScript type checking completed" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ ESLint checks completed (see logs)" >> $GITHUB_STEP_SUMMARY

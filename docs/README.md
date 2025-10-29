@@ -10,6 +10,15 @@ Welcome to the Claude Context documentation! Claude Context is a powerful tool t
 - [🔍 Environment Variables](getting-started/environment-variables.md) - How to configure environment variables for MCP
 - [⚡ Quick Start Guide](getting-started/quick-start.md) - Get up and running in 1 minutes
 
+### Installation Guides
+- [📦 Offline Installation](installation/OFFLINE_INSTALL_QUICKSTART.md) - Air-gapped/offline installation guide
+- [🎁 Standalone Bundle](installation/STANDALONE_BUNDLE.md) - Complete offline bundle documentation
+- [🖥️ Environment-Specific Install](installation/INSTALL_FOR_YOUR_ENVIRONMENT.md) - Detailed installation for your system
+- [⚡ Ultra Simple Install](installation/ULTRA_SIMPLE_INSTALL.md) - Quick reference card
+
+### Build Guides
+- [🔨 Build Tree-Sitter Perl](builds/BUILD_TREE_SITTER_PERL.md) - Building Perl parser natively
+- [🏗️ Standalone Bundle Workflows](builds/STANDALONE_BUNDLE_WORKFLOWS.md) - CI/CD for offline bundles
 
 ### Components
 - [MCP Server](../packages/mcp/README.md) - The MCP server of Claude Context
@@ -23,6 +32,10 @@ Welcome to the Claude Context documentation! Claude Context is a powerful tool t
 
 ### Development
 - [Testing and Benchmarking Guide](development/testing-and-benchmarking.md) - How to run tests and benchmarks
+
+### C++ Internals
+- [C++ Symbol Metadata](cpp-internals/cpp-symbol-metadata.md) - C++ symbol extraction and metadata
+- [C++ Testing and Benchmarking](cpp-internals/cpp-testing-and-benchmarking.md) - C++ parser testing
 
 ### Troubleshooting
 - [❓ FAQ](troubleshooting/faq.md) - Frequently asked questions

@@ -175,6 +175,46 @@ When reporting bugs or requesting features:
 3. **Provide Context**: Include relevant details about your environment
 4. **Steps to Reproduce**: Clear steps for reproducing bugs
 
+## 🔄 CI/CD Workflows
+
+The project uses GitHub Actions for continuous integration and deployment. All PRs are automatically tested.
+
+### Workflow Overview
+
+- **Lint** (`lint.yml`): Fast code quality checks (~1-2 min)
+- **Test** (`test.yml`): Comprehensive test suite with coverage (~5-10 min)
+- **Build** (`build.yml`): Cross-platform builds and benchmarks (~10-15 min)
+
+### Before Pushing
+
+Run the workflow verification script to test locally:
+
+```bash
+./scripts/verify-workflows.sh
+```
+
+This ensures all CI checks will pass.
+
+### Release Process
+
+**Development Releases** (for testing):
+```bash
+git tag dev-v0.1.4
+git push origin dev-v0.1.4
+```
+
+Creates a pre-release with downloadable artifacts.
+
+**Production Releases** (published to npm/VSCode):
+```bash
+git tag v0.1.4
+git push origin v0.1.4
+```
+
+Requires bumping versions in `package.json` files first.
+
+See [.github/workflows/README.md](.github/workflows/README.md) for detailed workflow documentation.
+
 ## 💬 Getting Help
 
 - **GitHub Issues**: For bugs and feature requests

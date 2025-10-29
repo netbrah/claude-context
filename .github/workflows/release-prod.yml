@@ -1,0 +1,274 @@
+name: Release Production
+
+# Creates tagged production releases with .tgz packages
+# Manual trigger for official releases
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.3)'
+        required: true
+        type: string
+      core_version:
+        description: 'Core package version (leave empty to use main version)'
+        required: false
+        type: string
+      mcp_version:
+        description: 'MCP package version (leave empty to use main version)'
+        required: false
+        type: string
+      publish_npm:
+        description: 'Publish to npm registry'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    name: Create Production Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format. Use semantic versioning (X.Y.Z)"
+            exit 1
+          fi
+          echo "✅ Version format is valid: ${{ github.event.inputs.version }}"
+
+      - name: Check if version exists
+        run: |
+          if git tag | grep -q "^v${{ github.event.inputs.version }}$"; then
+            echo "❌ Version ${{ github.event.inputs.version }} already exists"
+            exit 1
+          fi
+          echo "✅ Version ${{ github.event.inputs.version }} is available"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run full CI pipeline
+        run: |
+          echo "🔍 Running linting and type checking..."
+          pnpm build
+          pnpm typecheck
+          
+          echo "🧪 Running tests separately..."
+          cd packages/core
+          pnpm test -- cpp-parser.test.ts --verbose
+          pnpm test -- cpp-fixtures.test.ts --verbose
+          pnpm test -- smf-parser.test.ts --verbose
+          pnpm test -- perl-parser.test.ts --verbose
+          pnpm test -- cpp-symbol-extractor.test.ts --verbose || true
+          pnpm test -- cpp-symbol-extractor-edge-cases.test.ts --verbose || true
+          pnpm test -- cpp-symbol-metadata.test.ts --verbose || true
+          cd ../..
+
+      - name: Update package versions
+        run: |
+          # Set versions for packages
+          CORE_VERSION="${{ github.event.inputs.core_version }}"
+          MCP_VERSION="${{ github.event.inputs.mcp_version }}"
+          MAIN_VERSION="${{ github.event.inputs.version }}"
+          
+          # Use main version if specific versions not provided
+          CORE_VERSION=${CORE_VERSION:-$MAIN_VERSION}
+          MCP_VERSION=${MCP_VERSION:-$MAIN_VERSION}
+          
+          echo "Updating versions:"
+          echo "  Main: $MAIN_VERSION"
+          echo "  Core: $CORE_VERSION"
+          echo "  MCP: $MCP_VERSION"
+          
+          # Update root package.json
+          npm version "$MAIN_VERSION" --no-git-tag-version
+          
+          # Update core package
+          cd packages/core
+          npm version "$CORE_VERSION" --no-git-tag-version
+          cd ../..
+          
+          # Update MCP package
+          cd packages/mcp
+          npm version "$MCP_VERSION" --no-git-tag-version
+          cd ../..
+          
+          # Store versions for later use
+          echo "CORE_VERSION=$CORE_VERSION" >> $GITHUB_ENV
+          echo "MCP_VERSION=$MCP_VERSION" >> $GITHUB_ENV
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Create .tgz packages
+        run: |
+          echo "📦 Creating release packages..."
+          mkdir -p release-packages
+          
+          # Create core package
+          echo "Building core package v${{ env.CORE_VERSION }}..."
+          cd packages/core
+          pnpm pack --pack-destination ../../release-packages
+          cd ../..
+          
+          # Create mcp package
+          echo "Building MCP package v${{ env.MCP_VERSION }}..."
+          cd packages/mcp
+          pnpm pack --pack-destination ../../release-packages
+          cd ../..
+          
+          # List created packages
+          echo "Created release packages:"
+          ls -la release-packages/*.tgz
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get last production release
+          last_release=$(git tag -l "v*" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || echo "")
+          
+          if [ -n "$last_release" ]; then
+            echo "Comparing with last release: $last_release"
+            changelog=$(git log --pretty=format:"- %s (%an)" ${last_release}..HEAD)
+          else
+            echo "No previous release found, showing last 20 commits"
+            changelog=$(git log --pretty=format:"- %s (%an)" -20)
+          fi
+          
+          cat > release-notes.md << EOF
+          ## Claude Context v${{ github.event.inputs.version }}
+          
+          **Release Date:** $(date -u '+%Y-%m-%d')  
+          **Commit:** \`${GITHUB_SHA:0:7}\`
+          
+          ### Package Versions
+          - **Core:** v${{ env.CORE_VERSION }}
+          - **MCP Server:** v${{ env.MCP_VERSION }}
+          
+          ### Changes
+          $changelog
+          
+          ### Installation
+          
+          #### From npm (if published)
+          \`\`\`bash
+          npm install @zilliz/claude-context-core@${{ env.CORE_VERSION }}
+          npm install @zilliz/claude-context-mcp@${{ env.MCP_VERSION }}
+          \`\`\`
+          
+          #### From .tgz packages
+          \`\`\`bash
+          # Download .tgz files from this release, then:
+          npm install ./zilliz-claude-context-core-${{ env.CORE_VERSION }}.tgz
+          npm install ./zilliz-claude-context-mcp-${{ env.MCP_VERSION }}.tgz
+          \`\`\`
+          
+          ### MCP Server Usage
+          \`\`\`bash
+          # Install globally
+          npm install -g ./zilliz-claude-context-mcp-${{ env.MCP_VERSION }}.tgz
+          
+          # Run server
+          npx @zilliz/claude-context-mcp
+          \`\`\`
+          
+          ### Documentation
+          - [Getting Started](https://github.com/${{ github.repository }}#getting-started)
+          - [API Documentation](https://github.com/${{ github.repository }}/tree/main/docs)
+          - [Examples](https://github.com/${{ github.repository }}/tree/main/examples)
+          
+          ---
+          
+          *This is an official production release. For development builds, see pre-release tags.*
+          EOF
+
+      - name: Commit version updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json packages/*/package.json
+          git commit -m "chore: bump version to ${{ github.event.inputs.version }}" || echo "No changes to commit"
+
+      - name: Create release tag
+        run: |
+          git tag -a "v${{ github.event.inputs.version }}" -m "Release v${{ github.event.inputs.version }}"
+          git push origin "v${{ github.event.inputs.version }}"
+
+      - name: Create GitHub release
+        run: |
+          gh release create "v${{ github.event.inputs.version }}" \
+            --title "Claude Context v${{ github.event.inputs.version }}" \
+            --notes-file release-notes.md \
+            release-packages/*.tgz
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Publish to npm
+        if: ${{ github.event.inputs.publish_npm == 'true' }}
+        run: |
+          echo "📦 Publishing packages to npm..."
+          
+          echo "Publishing core package..."
+          cd packages/core
+          pnpm publish --access public --no-git-checks
+          cd ../..
+          
+          echo "Publishing MCP package..."
+          cd packages/mcp
+          pnpm publish --access public --no-git-checks
+          cd ../..
+          
+          echo "✅ All packages published to npm"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Push version commits
+        run: |
+          git push origin ${{ github.ref_name }}
+
+      - name: 🎉 Release Summary
+        run: |
+          echo "## Production Release Created 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release:** [v${{ github.event.inputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ github.event.inputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Package Versions:" >> $GITHUB_STEP_SUMMARY
+          echo "- Core: v${{ env.CORE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- MCP: v${{ env.MCP_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.publish_npm }}" = "true" ]; then
+            echo "### 📤 Published to npm:" >> $GITHUB_STEP_SUMMARY
+            echo "- [@zilliz/claude-context-core@${{ env.CORE_VERSION }}](https://www.npmjs.com/package/@zilliz/claude-context-core)" >> $GITHUB_STEP_SUMMARY
+            echo "- [@zilliz/claude-context-mcp@${{ env.MCP_VERSION }}](https://www.npmjs.com/package/@zilliz/claude-context-mcp)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### 📦 Available as .tgz packages only" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Quick Links:" >> $GITHUB_STEP_SUMMARY
+          echo "- [Download Packages](https://github.com/${{ github.repository }}/releases/tag/v${{ github.event.inputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Changelog](https://github.com/${{ github.repository }}/releases/tag/v${{ github.event.inputs.version }})" >> $GITHUB_STEP_SUMMARY

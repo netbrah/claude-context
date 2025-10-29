@@ -5,9 +5,13 @@
  * Measures parsing performance, memory usage, and code quality metrics
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const BENCHMARK_DIR = path.join(__dirname, '../packages/core/src/splitter/__tests__/fixtures');
 const RESULTS_FILE = 'cpp-benchmark-results.json';
@@ -39,13 +43,13 @@ function countLines(filePath) {
 
 function getAllCppFiles(dir) {
     const files = [];
-    
+
     function traverse(currentDir) {
         const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-        
+
         for (const entry of entries) {
             const fullPath = path.join(currentDir, entry.name);
-            
+
             if (entry.isDirectory()) {
                 traverse(fullPath);
             } else if (entry.isFile() && entry.name.endsWith('.cpp')) {
@@ -53,24 +57,24 @@ function getAllCppFiles(dir) {
             }
         }
     }
-    
+
     traverse(dir);
     return files;
 }
 
 function runParserBenchmark() {
     log('\n🚀 C++ Parser Benchmark Suite', colors.bright + colors.cyan);
-    log('=' .repeat(80), colors.cyan);
-    
+    log('='.repeat(80), colors.cyan);
+
     const cppFiles = getAllCppFiles(BENCHMARK_DIR);
-    
+
     if (cppFiles.length === 0) {
         log('❌ No C++ files found in fixtures directory', colors.yellow);
         return;
     }
-    
+
     log(`\n📊 Found ${cppFiles.length} C++ files to benchmark\n`, colors.blue);
-    
+
     const results = {
         timestamp: new Date().toISOString(),
         platform: process.platform,
@@ -79,31 +83,31 @@ function runParserBenchmark() {
         files: [],
         summary: {}
     };
-    
+
     let totalLines = 0;
     let totalSize = 0;
     let totalParseTime = 0;
-    
+
     // Analyze each file
     for (const filePath of cppFiles) {
         const relativePath = path.relative(BENCHMARK_DIR, filePath);
         const lines = countLines(filePath);
         const sizeKB = parseFloat(getFileSizeInKB(filePath));
-        
+
         totalLines += lines;
         totalSize += sizeKB;
-        
+
         log(`\n📄 ${relativePath}`, colors.magenta);
         log(`   Lines: ${lines}`, colors.reset);
         log(`   Size: ${sizeKB} KB`, colors.reset);
-        
+
         // Simulate parsing time (in a real scenario, this would call the actual parser)
         const parseTimeMs = simulateParseTime(lines);
         totalParseTime += parseTimeMs;
-        
+
         log(`   Parse Time: ${parseTimeMs.toFixed(2)} ms`, colors.green);
         log(`   Lines/sec: ${(lines / (parseTimeMs / 1000)).toFixed(0)}`, colors.green);
-        
+
         results.files.push({
             path: relativePath,
             lines,
@@ -112,7 +116,7 @@ function runParserBenchmark() {
             linesPerSecond: Math.round(lines / (parseTimeMs / 1000))
         });
     }
-    
+
     // Calculate summary statistics
     results.summary = {
         totalLines,
@@ -123,7 +127,7 @@ function runParserBenchmark() {
         averageLinesPerFile: Math.round(totalLines / cppFiles.length),
         averageSizeKB: (totalSize / cppFiles.length).toFixed(2)
     };
-    
+
     // Print summary
     log('\n' + '='.repeat(80), colors.cyan);
     log('📈 Benchmark Summary', colors.bright + colors.cyan);
@@ -135,10 +139,10 @@ function runParserBenchmark() {
     log(`⚡ Overall speed: ${results.summary.overallLinesPerSecond} lines/sec`, colors.green);
     log(`📊 Average per file: ${results.summary.averageParseTimeMs} ms`, colors.yellow);
     log(`📏 Average lines: ${results.summary.averageLinesPerFile}`, colors.yellow);
-    
+
     // Save results
     saveResults(results);
-    
+
     log('\n✅ Benchmark complete!', colors.bright + colors.green);
     log(`📄 Results saved to ${RESULTS_FILE}\n`, colors.blue);
 }
@@ -152,7 +156,7 @@ function simulateParseTime(lines) {
 
 function saveResults(results) {
     let history = [];
-    
+
     if (fs.existsSync(RESULTS_FILE)) {
         try {
             history = JSON.parse(fs.readFileSync(RESULTS_FILE, 'utf-8'));
@@ -160,28 +164,28 @@ function saveResults(results) {
             log('⚠️  Could not read existing results file', colors.yellow);
         }
     }
-    
+
     history.push(results);
-    
+
     // Keep only last 20 benchmark runs
     if (history.length > 20) {
         history = history.slice(-20);
     }
-    
+
     fs.writeFileSync(RESULTS_FILE, JSON.stringify(history, null, 2));
-    
+
     // Also create a summary comparison if we have multiple runs
     if (history.length > 1) {
         const previous = history[history.length - 2];
         const current = history[history.length - 1];
-        
+
         log('\n📊 Comparison with previous run:', colors.cyan);
-        
-        const timeDiff = parseFloat(current.summary.totalParseTimeMs) - 
-                        parseFloat(previous.summary.totalParseTimeMs);
-        const speedDiff = current.summary.overallLinesPerSecond - 
-                         previous.summary.overallLinesPerSecond;
-        
+
+        const timeDiff = parseFloat(current.summary.totalParseTimeMs) -
+            parseFloat(previous.summary.totalParseTimeMs);
+        const speedDiff = current.summary.overallLinesPerSecond -
+            previous.summary.overallLinesPerSecond;
+
         if (timeDiff < 0) {
             log(`   ⚡ Parse time improved by ${Math.abs(timeDiff).toFixed(2)} ms`, colors.green);
         } else if (timeDiff > 0) {
@@ -189,7 +193,7 @@ function saveResults(results) {
         } else {
             log(`   ➡️  Parse time unchanged`, colors.blue);
         }
-        
+
         if (speedDiff > 0) {
             log(`   ⚡ Speed improved by ${speedDiff} lines/sec`, colors.green);
         } else if (speedDiff < 0) {
@@ -198,8 +202,9 @@ function saveResults(results) {
     }
 }
 
-if (require.main === module) {
+// Run if executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
     runParserBenchmark();
 }
 
-module.exports = { runParserBenchmark };
+export { runParserBenchmark };

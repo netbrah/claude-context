@@ -72,6 +72,22 @@ claude mcp add claude-context \
 
 See the [Claude Code MCP documentation](https://docs.anthropic.com/en/docs/claude-code/mcp) for more details about MCP server management.
 
+#### Offline/Air-Gapped Installation
+
+For systems without internet access or behind strict firewalls, use the standalone bundle:
+
+```bash
+# Build standalone bundle (on system with network)
+pnpm run bundle:full
+
+# Transfer and install on offline system
+tar -xzf claude-context-standalone-*.tar.gz
+cd claude-context-standalone
+./install.sh
+```
+
+📚 See [OFFLINE_INSTALL_QUICKSTART.md](docs/OFFLINE_INSTALL_QUICKSTART.md) and [STANDALONE_BUNDLE.md](docs/STANDALONE_BUNDLE.md) for complete instructions.
+
 ### Other MCP Client Configurations
 
 <details>

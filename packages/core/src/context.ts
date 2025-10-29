@@ -16,7 +16,7 @@ import {
     HybridSearchOptions,
     HybridSearchResult
 } from './vectordb';
-import { SemanticSearchResult } from './types';
+import { SemanticSearchResult, ProgressCallback } from './types';
 import { envManager } from './utils/env-manager';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -251,7 +251,7 @@ export class Context {
      */
     async indexCodebase(
         codebasePath: string,
-        progressCallback?: (progress: { phase: string; current: number; total: number; percentage: number }) => void,
+        progressCallback?: ProgressCallback,
         forceReindex: boolean = false
     ): Promise<{ indexedFiles: number; totalChunks: number; status: 'completed' | 'limit_reached' }> {
         const isHybrid = this.getIsHybrid();
@@ -317,7 +317,7 @@ export class Context {
 
     async reindexByChange(
         codebasePath: string,
-        progressCallback?: (progress: { phase: string; current: number; total: number; percentage: number }) => void
+        progressCallback?: ProgressCallback
     ): Promise<{ added: number, removed: number, modified: number }> {
         const collectionName = this.getCollectionName(codebasePath);
         const synchronizer = this.synchronizers.get(collectionName);
@@ -535,7 +535,7 @@ export class Context {
      */
     async clearIndex(
         codebasePath: string,
-        progressCallback?: (progress: { phase: string; current: number; total: number; percentage: number }) => void
+        progressCallback?: ProgressCallback
     ): Promise<void> {
         console.log(`[Context] 🧹 Cleaning index data for ${codebasePath}...`);
 

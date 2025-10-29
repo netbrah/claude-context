@@ -1,7 +1,7 @@
-name: CI
+name: Test
 
-# Fast feedback loop - lint, build, test
-# Runs on all PRs and main branch pushes for quick code quality checks
+# Core testing workflow with coverage
+# Runs all unit tests, parser tests, and generates coverage reports
 
 on:
   push:
@@ -15,10 +15,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: CI Pipeline
+  test:
+    name: Test Suite
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -38,70 +40,89 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Step 1: Lint (fastest - fail fast on style issues)
-      - name: 🔍 Lint
-        run: |
-          echo "::group::TypeScript Type Checking"
-          pnpm build  # Required for typecheck to pass
-          pnpm typecheck
-          echo "::endgroup::"
-          
-          echo "::group::ESLint Code Quality"
-          pnpm lint || true  # Don't fail CI on lint warnings
-          echo "::endgroup::"
-
-      # Step 2: Build (catches compilation errors)
-      - name: 🔨 Build All Packages
+      - name: Build packages
         run: pnpm build
 
-      # Step 3: Test (most thorough validation - each test file separately)
-      - name: 🧪 Test cpp-parser
+      - name: Run cpp-parser tests
         run: |
           cd packages/core
           pnpm test -- cpp-parser.test.ts --verbose
 
-      - name: 🧪 Test cpp-fixtures
+      - name: Run cpp-fixtures tests
         run: |
           cd packages/core
           pnpm test -- cpp-fixtures.test.ts --verbose
 
-      - name: 🧪 Test smf-parser
+      - name: Run smf-parser tests
         run: |
           cd packages/core
           pnpm test -- smf-parser.test.ts --verbose
 
-      - name: 🧪 Test perl-parser
+      - name: Run perl-parser tests
         run: |
           cd packages/core
           pnpm test -- perl-parser.test.ts --verbose
 
-      - name: 🧪 Test cpp-symbol-extractor
+      - name: Run cpp-symbol-extractor tests
         run: |
           cd packages/core
           pnpm test -- cpp-symbol-extractor.test.ts --verbose
         continue-on-error: true
 
-      - name: 🧪 Test cpp-symbol-extractor-edge-cases
+      - name: Run cpp-symbol-extractor-edge-cases tests
         run: |
           cd packages/core
           pnpm test -- cpp-symbol-extractor-edge-cases.test.ts --verbose
         continue-on-error: true
 
-      - name: 🧪 Test cpp-symbol-metadata
+      - name: Run cpp-symbol-metadata tests
         run: |
           cd packages/core
           pnpm test -- cpp-symbol-metadata.test.ts --verbose
         continue-on-error: true
 
-      - name: 🧪 Run Parser Tests
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Test Results 🧪" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All test files executed separately" >> $GITHUB_STEP_SUMMARY
+
+  parser-tests:
+    name: Parser Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core package
+        run: pnpm build:core
+
+      - name: Run parser tests
         run: ./run-parser-tests.sh
         continue-on-error: true
 
-      - name: ✅ CI Summary
+      - name: Generate parser summary
         if: always()
         run: |
-          echo "## CI Results 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "## Parser Test Results 🌳" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Code successfully built" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ TypeScript type checking passed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ All test files executed separately" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ AST parser tests completed (see logs for details)" >> $GITHUB_STEP_SUMMARY

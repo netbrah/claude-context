@@ -20,6 +20,7 @@ coverage/
 
 # Benchmark results
 cpp-benchmark-results.json
+build-benchmark.json
 
 # Packaged archives (except pre-built ones in root)
 packages/**/*.tgz
@@ -88,3 +89,10 @@ evaluation/retrieval_results*
 
 # Package tarballs
 *.tgz
+
+# Prebuilt native modules (large binaries)
+prebuilds/**/*.tar.gz
+prebuilds/**/*.node
+
+# Bundle output directory
+bundle-output/
