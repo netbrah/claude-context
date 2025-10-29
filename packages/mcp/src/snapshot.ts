@@ -18,9 +18,19 @@ export class SnapshotManager {
     private codebaseFileCount: Map<string, number> = new Map(); // Map of codebase path to indexed file count
     private codebaseInfoMap: Map<string, CodebaseInfo> = new Map(); // Map of codebase path to complete info
 
-    constructor() {
+    constructor(customSnapshotPath?: string) {
         // Initialize snapshot file path
-        this.snapshotFilePath = path.join(os.homedir(), '.context', 'mcp-codebase-snapshot.json');
+        // Priority: custom path > default path
+        if (customSnapshotPath) {
+            // Support both absolute and relative paths
+            this.snapshotFilePath = path.isAbsolute(customSnapshotPath) 
+                ? customSnapshotPath 
+                : path.resolve(process.cwd(), customSnapshotPath);
+            console.log(`[SNAPSHOT-DEBUG] Using custom snapshot path: ${this.snapshotFilePath}`);
+        } else {
+            this.snapshotFilePath = path.join(os.homedir(), '.context', 'mcp-codebase-snapshot.json');
+            console.log(`[SNAPSHOT-DEBUG] Using default snapshot path: ${this.snapshotFilePath}`);
+        }
     }
 
     /**
