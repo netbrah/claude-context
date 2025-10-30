@@ -66,21 +66,21 @@ Use `search_code` as your **PRIMARY** search tool for:
 
 // Example 1: Find specific functionality
 search_code({
-  path: "/home/runner/work/claude-context/claude-context",
+  path: "/absolute/path/to/codebase",
   query: "code that handles indexing progress updates",
   limit: 10
 })
 
 // Example 2: Find error handling patterns
 search_code({
-  path: "/home/runner/work/claude-context/claude-context",
+  path: "/absolute/path/to/codebase",
   query: "error handling in MCP tool handlers",
   limit: 5
 })
 
 // Example 3: Find with file type filter
 search_code({
-  path: "/home/runner/work/claude-context/claude-context",
+  path: "/absolute/path/to/codebase",
   query: "TypeScript interfaces for vector database",
   limit: 10,
   extensionFilter: [".ts"]
@@ -249,12 +249,12 @@ Always ensure the codebase is indexed:
 ```typescript
 // Check if indexed
 get_indexing_status({
-  path: "/home/runner/work/claude-context/claude-context"
+  path: "/absolute/path/to/codebase"
 })
 
 // If not indexed, index it first
 index_codebase({
-  path: "/home/runner/work/claude-context/claude-context",
+  path: "/absolute/path/to/codebase",
   force: false,
   splitter: "ast"
 })
@@ -265,7 +265,7 @@ index_codebase({
 ```typescript
 // Check progress during indexing
 get_indexing_status({
-  path: "/home/runner/work/claude-context/claude-context"
+  path: "/absolute/path/to/codebase"
 })
 ```
 
